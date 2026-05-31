@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saranya Vijayaraghavan — Clinical Data Professional</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #1D9E75;
+    --accent-light: #E1F5EE;
+    --accent-dim: rgba(29,158,117,0.15);
+    --dark: #0D1117;
+    --dark2: #161B22;
+    --dark3: #21262D;
+    --border: rgba(255,255,255,0.07);
+    --text: #E6EDF3;
+    --text-muted: #8B949E;
+    --text-dim: #484F58;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Outfit', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--dark); }
+  ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 3rem;
+    background: rgba(13,17,23,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .nav-logo span { color: var(--accent); }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── Hero ── */
+  #hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 8rem 3rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(29,158,117,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(29,158,117,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(29,158,117,0.12) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    position: relative;
+    max-width: 900px;
+    animation: fadeUp 1s ease both;
+  }
+
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .hero-tag::before {
+    content: '';
+    display: block;
+    width: 32px; height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(3.5rem, 8vw, 7rem);
+    font-weight: 300;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-subtitle {
+    font-family: var(--serif);
+    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+    font-weight: 300;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 2rem;
+  }
+
+  .hero-summary {
+    font-size: 1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-contacts {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+
+  .contact-pill {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 0.45rem 1rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .contact-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+  }
+
+  .stat-val {
+    font-family: var(--serif);
+    font-size: 2.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  /* ── Sections ── */
+  section {
+    padding: 6rem 3rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 300;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 3rem;
+  }
+
+  h2 em { font-style: italic; color: var(--accent); }
+
+  /* ── Experience Timeline ── */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .timeline-item {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 2.5rem;
+    position: relative;
+    padding-bottom: 3rem;
+  }
+
+  .timeline-item:last-child { padding-bottom: 0; }
+
+  .timeline-left {
+    text-align: right;
+    padding-top: 0.25rem;
+    position: relative;
+  }
+
+  .timeline-left::after {
+    content: '';
+    position: absolute;
+    top: 0.6rem; right: -2.5rem;
+    width: 2.5rem; height: 1px;
+    background: var(--border);
+  }
+
+  .timeline-date {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+  }
+
+  .timeline-right {
+    border-left: 1px solid var(--border);
+    padding-left: 2.5rem;
+    position: relative;
+  }
+
+  .timeline-right::before {
+    content: '';
+    position: absolute;
+    top: 0.5rem; left: -5px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .exp-company {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .exp-role {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+
+  .exp-location {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
+  .exp-bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .exp-bullets li {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    padding-left: 1.2rem;
+    position: relative;
+    line-height: 1.6;
+  }
+
+  .exp-bullets li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 1rem;
+  }
+
+  /* ── Skills ── */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .skill-card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .skill-card:hover {
+    border-color: rgba(29,158,117,0.3);
+    transform: translateY(-2px);
+  }
+
+  .skill-card-title {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .skill-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Education ── */
+  .edu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .edu-card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .edu-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+
+  .edu-degree {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+
+  .edu-school {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .edu-meta {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .edu-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* ── Languages ── */
+  .lang-grid {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .lang-card {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.75rem;
+    text-align: center;
+    min-width: 130px;
+    transition: border-color 0.2s;
+  }
+
+  .lang-card:hover { border-color: rgba(29,158,117,0.3); }
+
+  .lang-name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+
+  .lang-level {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Certs ── */
+  .cert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .cert-item {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.5rem;
+    transition: border-color 0.2s;
+  }
+
+  .cert-item:hover { border-color: rgba(29,158,117,0.3); }
+
+  .cert-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .cert-name {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .cert-org {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 3rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+
+  footer span { color: var(--accent); }
+
+  /* ── Divider ── */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    #hero { padding: 7rem 1.5rem 3rem; }
+    section { padding: 4rem 1.5rem; }
+    .timeline-item { grid-template-columns: 1fr; gap: 0.5rem; }
+    .timeline-left { text-align: left; }
+    .timeline-left::after { display: none; }
+    .edu-grid { grid-template-columns: 1fr; }
+    .hero-stats { gap: 1.5rem; }
+    footer { padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Saranya <span>V.</span></div>
+  <ul class="nav-links">
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#skills">Skills</a></li>
+    <li><a href="#education">Education</a></li>
+    <li><a href="#certifications">Certifications</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero" style="max-width:100%;padding-top:0;padding-bottom:0;">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Clinical Data · Life Sciences · GCP Regulated Environments</div>
+    <h1>Saranya<br><em>Vijayaraghavan</em></h1>
+    <p class="hero-subtitle">Clinical Data &amp; Life Sciences Professional</p>
+    <p class="hero-summary">
+      Life Sciences professional with 6+ years of experience across CRO and global consulting environments.
+      Expert in CTMS operations, clinical imaging workflows, data validation, and enterprise healthcare systems —
+      operating at the intersection of compliance, quality, and data integrity.
+    </p>
+    <div class="hero-contacts">
+      <a href="mailto:saranyaraghavan96@gmail.com" class="contact-pill">saranyaraghavan96@gmail.com</a>
+      <a href="tel:+393514685188" class="contact-pill">+39 3514685188</a>
+      <span class="contact-pill">Padova, Italy</span>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-val">6+</div>
+        <div class="stat-label">Years Experience</div>
+      </div>
+      <div>
+        <div class="stat-val">3</div>
+        <div class="stat-label">Global CROs</div>
+      </div>
+      <div>
+        <div class="stat-val">5</div>
+        <div class="stat-label">Languages</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- EXPERIENCE -->
+<section id="experience">
+  <div class="section-label reveal">Experience</div>
+  <h2 class="reveal">Professional <em>Journey</em></h2>
+  <div class="timeline">
+
+    <div class="timeline-item reveal">
+      <div class="timeline-left">
+        <div class="timeline-date">Jul 2023<br>Sep 2024</div>
+      </div>
+      <div class="timeline-right">
+        <div class="exp-company">HCL Technologies</div>
+        <div class="exp-role">Technical Lead</div>
+        <div class="exp-location">Chennai, India</div>
+        <ul class="exp-bullets">
+          <li>Supported enterprise healthcare systems including EHR, RIS, PACS, and AMBRA, resolving workflow, integration, and data consistency issues.</li>
+          <li>Performed incoming inspections and planned maintenance on medical equipment and clinical systems; troubleshot operational issues impacting clinical workflows.</li>
+          <li>Performed root cause analysis and coordinated resolution across cross-functional teams and vendors.</li>
+          <li>Improved operational efficiency through process optimisation, issue tracking enhancements, and documentation updates.</li>
+          <li>Created SOPs, technical documentation, and knowledge base articles for support operations.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal">
+      <div class="timeline-left">
+        <div class="timeline-date">May 2020<br>Jul 2023</div>
+      </div>
+      <div class="timeline-right">
+        <div class="exp-company">Clario</div>
+        <div class="exp-role">Clinical Data Management Associate I</div>
+        <div class="exp-location">Mysore, India</div>
+        <ul class="exp-bullets">
+          <li>Managed clinical datasets and CTMS-related workflows supporting regulated clinical research studies.</li>
+          <li>Performed data validation, quality checks, and discrepancy resolution across multiple systems.</li>
+          <li>Identified data gaps and workflow issues; supported corrective actions with QA and project teams.</li>
+          <li>Developed and maintained controlled documentation including validation reports and data transfer specifications.</li>
+          <li>Worked with JIRA, CDAMS, and Salesforce supporting cross-functional deliverables.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="timeline-item reveal">
+      <div class="timeline-left">
+        <div class="timeline-date">May 2017<br>May 2020</div>
+      </div>
+      <div class="timeline-right">
+        <div class="exp-company">Parexel International</div>
+        <div class="exp-role">Imaging Research Associate I / II</div>
+        <div class="exp-location">Hyderabad, India</div>
+        <ul class="exp-bullets">
+          <li>Supported CTMS-related workflows, clinical imaging review, and quality compliance in GCP-regulated trials.</li>
+          <li>Assisted in site monitoring activities including tracking, documentation review, and issue escalation.</li>
+          <li>Supported site initiation activities including queries, documentation readiness, and coordination with CRAs and site teams.</li>
+          <li>Performed quality checks on CT, MR, XR, and DXA imaging datasets ensuring protocol compliance.</li>
+          <li>Managed role-based access for site personnel and supported training and onboarding activities.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SKILLS -->
+<section id="skills">
+  <div class="section-label reveal">Capabilities</div>
+  <h2 class="reveal">Core <em>Skills</em></h2>
+  <div class="skills-grid">
+    <div class="skill-card reveal">
+      <div class="skill-card-title">Clinical &amp; Data</div>
+      <div class="skill-tags">
+        <span class="skill-tag">Clinical Data Analysis</span>
+        <span class="skill-tag">CTMS Platforms</span>
+        <span class="skill-tag">Data Validation</span>
+        <span class="skill-tag">Data Quality</span>
+        <span class="skill-tag">Data Integrity</span>
+        <span class="skill-tag">Data Reconciliation</span>
+      </div>
+    </div>
+    <div class="skill-card reveal">
+      <div class="skill-card-title">Clinical Operations</div>
+      <div class="skill-tags">
+        <span class="skill-tag">Site Monitoring Support</span>
+        <span class="skill-tag">Site Initiation</span>
+        <span class="skill-tag">ICH-GCP</span>
+        <span class="skill-tag">SOPs</span>
+        <span class="skill-tag">Root Cause Analysis</span>
+        <span class="skill-tag">Role-Based Access</span>
+      </div>
+    </div>
+    <div class="skill-card reveal">
+      <div class="skill-card-title">Technical</div>
+      <div class="skill-tags">
+        <span class="skill-tag">SQL</span>
+        <span class="skill-tag">Python</span>
+        <span class="skill-tag">JIRA</span>
+        <span class="skill-tag">CDAMS</span>
+        <span class="skill-tag">Salesforce</span>
+        <span class="skill-tag">MS Excel</span>
+        <span class="skill-tag">PowerPoint</span>
+      </div>
+    </div>
+    <div class="skill-card reveal">
+      <div class="skill-card-title">Healthcare Systems</div>
+      <div class="skill-tags">
+        <span class="skill-tag">EHR</span>
+        <span class="skill-tag">RIS</span>
+        <span class="skill-tag">PACS</span>
+        <span class="skill-tag">AMBRA</span>
+        <span class="skill-tag">DICOM</span>
+        <span class="skill-tag">HL7</span>
+        <span class="skill-tag">Process Optimisation</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- EDUCATION -->
+<section id="education">
+  <div class="section-label reveal">Education</div>
+  <h2 class="reveal">Academic <em>Background</em></h2>
+  <div class="edu-grid">
+    <div class="edu-card reveal">
+      <div class="edu-degree">MSc — Biotechnology for Food Science</div>
+      <div class="edu-school">University of Padova · Padova, Italy</div>
+      <div class="edu-meta">
+        <span class="edu-badge">In Progress</span>
+        <span class="edu-badge">2026</span>
+      </div>
+    </div>
+    <div class="edu-card reveal">
+      <div class="edu-degree">BTech — Biotechnology</div>
+      <div class="edu-school">Prathyusha Engineering College · India</div>
+      <div class="edu-meta">
+        <span class="edu-badge">Completed</span>
+        <span class="edu-badge">2017</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CERTIFICATIONS -->
+<section id="certifications">
+  <div class="section-label reveal">Certifications</div>
+  <h2 class="reveal">Professional <em>Credentials</em></h2>
+  <div class="cert-list">
+    <div class="cert-item reveal">
+      <div class="cert-icon">📋</div>
+      <div>
+        <div class="cert-name">Project Management</div>
+        <div class="cert-org">Coursera</div>
+      </div>
+    </div>
+    <div class="cert-item reveal">
+      <div class="cert-icon">☁️</div>
+      <div>
+        <div class="cert-name">Azure Fundamentals (AZ-900)</div>
+        <div class="cert-org">Microsoft</div>
+      </div>
+    </div>
+    <div class="cert-item reveal">
+      <div class="cert-icon">📊</div>
+      <div>
+        <div class="cert-name">Data Visualisation with Python</div>
+        <div class="cert-org">Coursera</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- LANGUAGES -->
+<section id="contact">
+  <div class="section-label reveal">Languages</div>
+  <h2 class="reveal">Linguistic <em>Reach</em></h2>
+  <div class="lang-grid">
+    <div class="lang-card reveal">
+      <div class="lang-name">Tamil</div>
+      <div class="lang-level">Native</div>
+    </div>
+    <div class="lang-card reveal">
+      <div class="lang-name">English</div>
+      <div class="lang-level">Fluent</div>
+    </div>
+    <div class="lang-card reveal">
+      <div class="lang-name">Italian</div>
+      <div class="lang-level">Conversational</div>
+    </div>
+    <div class="lang-card reveal">
+      <div class="lang-name">German</div>
+      <div class="lang-level">A1</div>
+    </div>
+    <div class="lang-card reveal">
+      <div class="lang-name">Polish</div>
+      <div class="lang-level">A1</div>
+    </div>
+  </div>
+
+  <div style="margin-top:4rem;" class="reveal">
+    <div class="section-label">Get in touch</div>
+    <h2>Open to <em>Opportunities</em></h2>
+    <div class="hero-contacts">
+      <a href="mailto:saranyaraghavan96@gmail.com" class="contact-pill">saranyaraghavan96@gmail.com</a>
+      <a href="tel:+393514685188" class="contact-pill">+39 3514685188</a>
+      <span class="contact-pill">Padova, Italy</span>
+    </div>
+    <p style="font-size:0.9rem;color:var(--text-muted);max-width:500px;line-height:1.8;">
+      Currently seeking clinical data internships, full-time roles, and PhD opportunities in Denmark and across Europe.
+      Open to relocation. Available to start at the earliest opportunity.
+    </p>
+  </div>
+</section>
+
+<footer>
+  Saranya Vijayaraghavan &nbsp;·&nbsp; Clinical Data &amp; Life Sciences &nbsp;·&nbsp; <span>Padova, Italy</span>
+</footer>
+
+<script>
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
