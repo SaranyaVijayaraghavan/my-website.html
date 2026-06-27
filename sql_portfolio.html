@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saranya Vijayaraghavan — SQL & ETL Portfolio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg:        #0D1B2A;
+    --surface:   #122236;
+    --panel:     #182E45;
+    --border:    #1E3D5C;
+    --teal:      #00B4A6;
+    --teal-dim:  #007E74;
+    --amber:     #F5A623;
+    --amber-dim: #A36A10;
+    --text:      #D6E8F5;
+    --muted:     #6B8FA8;
+    --success:   #3DD68C;
+    --error:     #FF6B6B;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 48px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-family: var(--mono);
+    font-size: 1.55rem;
+    font-weight: 600;
+    color: var(--teal);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+  .header-left h1 span { color: var(--muted); font-weight: 300; }
+  .header-left p {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: var(--mono);
+    letter-spacing: 0.3px;
+  }
+  .tag-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .tag {
+    font-size: 0.68rem;
+    font-family: var(--mono);
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tag.hi { border-color: var(--teal-dim); color: var(--teal); }
+  .tag.am { border-color: var(--amber-dim); color: var(--amber); }
+  .header-right {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    line-height: 1.8;
+    flex-shrink: 0;
+  }
+  .header-right span { color: var(--teal); }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: calc(100vh - 120px);
+  }
+
+  /* ── SIDEBAR ── */
+  nav {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+  .nav-section-label {
+    font-size: 0.62rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0 20px 8px;
+    margin-top: 16px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+    font-size: 0.8rem;
+  }
+  .nav-item:hover { background: var(--panel); }
+  .nav-item.active {
+    background: var(--panel);
+    border-left-color: var(--teal);
+    color: var(--teal);
+  }
+  .nav-item .num {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    min-width: 18px;
+  }
+  .nav-item.active .num { color: var(--teal); }
+  .nav-badge {
+    margin-left: auto;
+    font-size: 0.6rem;
+    font-family: var(--mono);
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: var(--teal-dim);
+    color: var(--teal);
+    opacity: 0.7;
+  }
+
+  /* ── MAIN ── */
+  main {
+    overflow-y: auto;
+    padding: 36px 48px;
+    max-width: 960px;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-header {
+    margin-bottom: 28px;
+  }
+  .section-header .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--teal);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .section-header h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .section-header p {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 680px;
+  }
+
+  /* ── SCENARIO BOX ── */
+  .scenario-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+    font-size: 0.82rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .scenario-box strong { color: var(--amber); font-family: var(--mono); }
+
+  /* ── SCHEMA VIEWER ── */
+  .schema-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .schema-table {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .schema-table-header {
+    background: var(--border);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--teal);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .schema-table-header .icon { opacity: 0.6; font-size: 0.7rem; }
+  .schema-col {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .schema-col:last-child { border-bottom: none; }
+  .col-name { color: var(--text); }
+  .col-type { color: var(--amber); opacity: 0.8; }
+  .col-pk { color: var(--teal); font-size: 0.62rem; margin-left: 6px; }
+
+  /* ── SQL EDITOR ── */
+  .query-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .query-card-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .query-card-title {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .query-card-desc {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .btn-run {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--teal);
+    color: #0D1B2A;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 16px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-run:hover { background: #00cfc0; }
+  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-run svg { width: 12px; height: 12px; }
+
+  textarea.sql-editor {
+    width: 100%;
+    background: #0a1520;
+    color: #c9dde9;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    border: none;
+    padding: 18px 20px;
+    resize: vertical;
+    min-height: 180px;
+    outline: none;
+    tab-size: 2;
+  }
+
+  .result-area {
+    border-top: 1px solid var(--border);
+    padding: 14px 18px;
+  }
+  .result-meta {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    gap: 16px;
+  }
+  .result-meta .ok { color: var(--success); }
+  .result-meta .err { color: var(--error); }
+  .result-table-wrap { overflow-x: auto; }
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+  .result-table th {
+    text-align: left;
+    padding: 7px 12px;
+    background: var(--border);
+    color: var(--teal);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .result-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table tr:hover td { background: rgba(0,180,166,0.04); }
+  .result-empty {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ── ETL FLOW DIAGRAM ── */
+  .etl-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .etl-step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    min-width: 130px;
+    flex: 1;
+  }
+  .etl-step .step-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .etl-step .step-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .etl-step .step-detail {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .etl-step.extract { border-top: 2px solid var(--amber); }
+  .etl-step.transform { border-top: 2px solid var(--teal); }
+  .etl-step.load { border-top: 2px solid var(--success); }
+  .etl-arrow {
+    color: var(--muted);
+    font-size: 1.1rem;
+    padding: 0 4px;
+  }
+
+  /* ── SKILL TAGS ── */
+  .skill-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+    margin-bottom: 4px;
+  }
+  .skill-tag {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--teal);
+    background: rgba(0,180,166,0.06);
+  }
+
+  /* ── LOADING ── */
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    gap: 16px;
+  }
+  .loader-text {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--teal);
+  }
+  .loader-bar {
+    width: 220px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .loader-fill {
+    height: 100%;
+    background: var(--teal);
+    animation: load 1.4s ease-in-out infinite;
+  }
+  @keyframes load {
+    0% { width: 0; margin-left: 0; }
+    50% { width: 100%; margin-left: 0; }
+    100% { width: 0; margin-left: 100%; }
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 28px 0;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loader-text">▶ initialising sql engine...</div>
+  <div class="loader-bar"><div class="loader-fill"></div></div>
+</div>
+
+<header>
+  <div class="header-left">
+    <h1>Saranya Vijayaraghavan <span>// SQL & ETL Portfolio</span></h1>
+    <p>Genomics Data Engineering · CRO Pipeline Context · Interactive Queries</p>
+    <div class="tag-row">
+      <span class="tag hi">ETL Pipelines</span>
+      <span class="tag hi">Data Transformation</span>
+      <span class="tag hi">QC Automation</span>
+      <span class="tag am">Genomics Context</span>
+      <span class="tag am">Regulated Data</span>
+      <span class="tag">SQL · Python Analogue</span>
+    </div>
+  </div>
+  <div class="header-right">
+    saranyaraghavan96@gmail.com<br>
+    <span>MSc Biotechnology</span> · University of Padova<br>
+    +39 351 468 5188
+  </div>
+</header>
+
+<div class="layout">
+  <nav>
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" data-section="intro">
+      <span class="num">00</span> Project Brief
+    </div>
+    <div class="nav-item" data-section="schema">
+      <span class="num">01</span> Schema Design
+    </div>
+
+    <div class="nav-section-label">Extract</div>
+    <div class="nav-item" data-section="ingest">
+      <span class="num">02</span> Raw Variant Ingest
+      <span class="nav-badge">E</span>
+    </div>
+
+    <div class="nav-section-label">Transform</div>
+    <div class="nav-item" data-section="qc">
+      <span class="num">03</span> QC & Filtering
+      <span class="nav-badge">T</span>
+    </div>
+    <div class="nav-item" data-section="annot">
+      <span class="num">04</span> Annotation Joins
+      <span class="nav-badge">T</span>
+    </div>
+    <div class="nav-item" data-section="agg">
+      <span class="num">05</span> Sample Aggregation
+      <span class="nav-badge">T</span>
+    </div>
+
+    <div class="nav-section-label">Load</div>
+    <div class="nav-item" data-section="mart">
+      <span class="num">06</span> Reporting Mart
+      <span class="nav-badge">L</span>
+    </div>
+
+    <div class="nav-section-label">Analytics</div>
+    <div class="nav-item" data-section="audit">
+      <span class="num">07</span> Audit Trail
+    </div>
+    <div class="nav-item" data-section="report">
+      <span class="num">08</span> Delivery Report
+    </div>
+  </nav>
+
+  <main>
+    <!-- 00 INTRO -->
+    <div class="section active" id="section-intro">
+      <div class="section-header">
+        <div class="eyebrow">Project Brief</div>
+        <h2>Genomics Variant ETL Pipeline</h2>
+        <p>
+          A production-realistic SQL ETL project simulating the data workflow inside a genomics services CRO.
+          Raw variant call data (VCF-equivalent rows) flows through extraction, multi-step QC transformation,
+          annotation joins, sample-level aggregation, and delivery reporting — all in SQL, mirroring the
+          pipeline logic I applied during my SNP heritability research and clinical data management roles.
+        </p>
+      </div>
+
+      <div class="etl-flow">
+        <div class="etl-step extract">
+          <div class="step-label">Extract</div>
+          <div class="step-name">Raw VCF Ingest</div>
+          <div class="step-detail">Variant calls per sample<br>Unfiltered, multi-source</div>
+        </div>
+        <div class="etl-arrow">→</div>
+        <div class="etl-step transform">
+          <div class="step-label">Transform · QC</div>
+          <div class="step-name">Filter & Flag</div>
+          <div class="step-detail">Depth, qual, allele freq<br>Edit-check logic</div>
+        </div>
+        <div class="etl-arrow">→</div>
+        <div class="etl-step transform">
+          <div class="step-label">Transform · Enrich</div>
+          <div class="step-name">Annotate & Join</div>
+          <div class="step-detail">Gene maps, clinvar,<br>sample metadata</div>
+        </div>
+        <div class="etl-arrow">→</div>
+        <div class="etl-step load">
+          <div class="step-label">Load</div>
+          <div class="step-name">Reporting Mart</div>
+          <div class="step-detail">Aggregated, audit-ready<br>delivery dataset</div>
+        </div>
+      </div>
+
+      <div class="scenario-box">
+        <strong>// SCENARIO</strong><br>
+        A contract genomics lab receives whole-exome sequencing data for 6 patients across 2 oncology studies.
+        Raw variant calls arrive as structured rows (simulating VCF→DB ingest). The ETL pipeline must:
+        extract raw calls → apply QC filters (depth ≥20×, QUAL ≥30, allele frequency thresholds) →
+        join against gene annotation and ClinVar significance tables → aggregate per-sample variant burden →
+        load a clean, audit-logged delivery mart ready for the client biostatistics team.
+        <br><br>
+        <strong>// SKILLS DEMONSTRATED</strong>&nbsp; ETL design · QC logic · multi-table joins · window functions ·
+        CTEs · audit trail · regulatory-ready data documentation
+      </div>
+
+      <p style="font-size:0.8rem; color:var(--muted);">
+        Use the sidebar to walk through each pipeline stage. Every query is <strong style="color:var(--teal)">live and runnable</strong>
+        — hit ▶ Run to execute against the in-browser SQLite engine and see real results.
+      </p>
+
+      <div class="skill-tags">
+        <span class="skill-tag">CTEs</span>
+        <span class="skill-tag">Window Functions</span>
+        <span class="skill-tag">Multi-table JOINs</span>
+        <span class="skill-tag">Conditional Aggregation</span>
+        <span class="skill-tag">QC Filter Logic</span>
+        <span class="skill-tag">Audit Trail Design</span>
+        <span class="skill-tag">CASE WHEN</span>
+        <span class="skill-tag">GROUP BY / HAVING</span>
+        <span class="skill-tag">Subqueries</span>
+        <span class="skill-tag">Data Validation</span>
+      </div>
+    </div>
+
+    <!-- 01 SCHEMA -->
+    <div class="section" id="section-schema">
+      <div class="section-header">
+        <div class="eyebrow">Stage 01 · Schema Design</div>
+        <h2>Database Schema</h2>
+        <p>A normalised schema representing a genomics services data model. Tables mirror real CRO workflows:
+        a raw ingest staging table, reference annotation tables, sample metadata, and a clean delivery mart.</p>
+      </div>
+
+      <div class="schema-grid" id="schema-display"></div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">▶ Inspect any table</div>
+            <div class="query-card-desc">SELECT * FROM &lt;table_name&gt; LIMIT 10 — try raw_variants, gene_annotations, samples, clinvar_significance, etl_audit_log</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)">
+            <svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg>
+            Run
+          </button>
+        </div>
+        <textarea class="sql-editor">SELECT * FROM raw_variants LIMIT 10;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 02 INGEST -->
+    <div class="section" id="section-ingest">
+      <div class="section-header">
+        <div class="eyebrow">Stage 02 · Extract</div>
+        <h2>Raw Variant Ingest</h2>
+        <p>The first stage extracts raw variant calls from the staging table, validates record completeness,
+        and identifies immediate data quality issues before any transformation begins — mirroring the
+        Edit Check logic I designed at Clario.</p>
+      </div>
+
+      <div class="scenario-box">
+        <strong>// ETL NOTE</strong> In production this stage reads from a file-system landing zone (VCF files parsed by bcftools/GATK) into a staging DB table. The SQL below audits ingest completeness and flags structural data issues before the transform step begins.
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">2.1 — Ingest Summary: Row Counts & Completeness Check</div>
+            <div class="query-card-desc">How many variants ingested per sample? Are any critical fields NULL?</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- EXTRACT STAGE: Ingest audit
+-- Count variants per sample, flag NULL critical fields
+SELECT
+    sample_id,
+    COUNT(*)                                          AS total_variants,
+    COUNT(CASE WHEN read_depth IS NULL THEN 1 END)   AS missing_depth,
+    COUNT(CASE WHEN quality_score IS NULL THEN 1 END) AS missing_qual,
+    COUNT(CASE WHEN alt_allele IS NULL THEN 1 END)   AS missing_alt,
+    MIN(read_depth)                                   AS min_depth,
+    MAX(read_depth)                                   AS max_depth,
+    ROUND(AVG(quality_score), 1)                     AS avg_qual
+FROM raw_variants
+GROUP BY sample_id
+ORDER BY sample_id;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">2.2 — Duplicate Detection</div>
+            <div class="query-card-desc">Identify duplicate variant calls (same sample + chromosome + position)</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- Detect duplicates before transform
+-- A CRO regulatory requirement: no duplicate records in delivered datasets
+WITH dup_check AS (
+    SELECT
+        sample_id,
+        chromosome,
+        position,
+        COUNT(*) AS call_count
+    FROM raw_variants
+    GROUP BY sample_id, chromosome, position
+    HAVING COUNT(*) > 1
+)
+SELECT
+    d.sample_id,
+    d.chromosome,
+    d.position,
+    d.call_count                                 AS duplicate_count,
+    r.ref_allele,
+    r.alt_allele,
+    r.quality_score
+FROM dup_check d
+JOIN raw_variants r
+  ON d.sample_id = r.sample_id
+ AND d.chromosome = r.chromosome
+ AND d.position = r.position
+ORDER BY d.sample_id, d.chromosome, d.position;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 03 QC -->
+    <div class="section" id="section-qc">
+      <div class="section-header">
+        <div class="eyebrow">Stage 03 · Transform — QC & Filtering</div>
+        <h2>Quality Control & Variant Filtering</h2>
+        <p>Core ETL transformation: applying QC thresholds that mirror bcftools/GATK hard-filter logic in SQL.
+        Every rejected variant is categorised by failure reason — a regulatory audit requirement.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">3.1 — Apply QC Filters & Classify Variants</div>
+            <div class="query-card-desc">Depth ≥20, QUAL ≥30, allele frequency 0.05–0.95. Tag PASS / FAIL with reason.</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- TRANSFORM: QC filter logic
+-- Mirrors the Edit Check Specification pattern from clinical data management
+SELECT
+    variant_id,
+    sample_id,
+    chromosome,
+    position,
+    ref_allele,
+    alt_allele,
+    read_depth,
+    quality_score,
+    allele_frequency,
+    CASE
+        WHEN read_depth < 20                        THEN 'FAIL_LOW_DEPTH'
+        WHEN quality_score < 30                     THEN 'FAIL_LOW_QUAL'
+        WHEN allele_frequency < 0.05               THEN 'FAIL_LOW_AF'
+        WHEN allele_frequency > 0.95               THEN 'FAIL_HIGH_AF'
+        WHEN read_depth IS NULL
+          OR quality_score IS NULL                  THEN 'FAIL_MISSING_DATA'
+        ELSE                                             'PASS'
+    END AS qc_status,
+    CASE
+        WHEN read_depth >= 20
+         AND quality_score >= 30
+         AND allele_frequency BETWEEN 0.05 AND 0.95
+         AND read_depth IS NOT NULL
+         AND quality_score IS NOT NULL              THEN 1
+        ELSE 0
+    END AS passes_qc
+FROM raw_variants
+ORDER BY sample_id, chromosome, position;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">3.2 — QC Failure Summary by Sample</div>
+            <div class="query-card-desc">Pass rate and failure breakdown per sample — the QC report handed to the lab team</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- QC Summary per sample (for lab QC report)
+WITH qc_classified AS (
+    SELECT
+        sample_id,
+        CASE
+            WHEN read_depth < 20                   THEN 'FAIL_LOW_DEPTH'
+            WHEN quality_score < 30                THEN 'FAIL_LOW_QUAL'
+            WHEN allele_frequency < 0.05           THEN 'FAIL_LOW_AF'
+            WHEN allele_frequency > 0.95           THEN 'FAIL_HIGH_AF'
+            WHEN read_depth IS NULL
+              OR quality_score IS NULL             THEN 'FAIL_MISSING_DATA'
+            ELSE                                        'PASS'
+        END AS qc_status
+    FROM raw_variants
+)
+SELECT
+    sample_id,
+    COUNT(*)                                               AS total_variants,
+    SUM(CASE WHEN qc_status = 'PASS' THEN 1 ELSE 0 END)  AS passed,
+    SUM(CASE WHEN qc_status != 'PASS' THEN 1 ELSE 0 END) AS failed,
+    ROUND(
+        100.0 * SUM(CASE WHEN qc_status = 'PASS' THEN 1 ELSE 0 END) / COUNT(*), 1
+    )                                                      AS pass_rate_pct,
+    SUM(CASE WHEN qc_status = 'FAIL_LOW_DEPTH'    THEN 1 ELSE 0 END) AS fail_depth,
+    SUM(CASE WHEN qc_status = 'FAIL_LOW_QUAL'     THEN 1 ELSE 0 END) AS fail_qual,
+    SUM(CASE WHEN qc_status = 'FAIL_LOW_AF'       THEN 1 ELSE 0 END) AS fail_low_af,
+    SUM(CASE WHEN qc_status = 'FAIL_HIGH_AF'      THEN 1 ELSE 0 END) AS fail_high_af
+FROM qc_classified
+GROUP BY sample_id
+ORDER BY pass_rate_pct ASC;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 04 ANNOTATION -->
+    <div class="section" id="section-annot">
+      <div class="section-header">
+        <div class="eyebrow">Stage 04 · Transform — Annotation Joins</div>
+        <h2>Gene Annotation & ClinVar Enrichment</h2>
+        <p>QC-passed variants are enriched with gene identity, functional consequence, and clinical significance
+        through reference table joins — the bioinformatics equivalent of a database-level annotation step.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">4.1 — Annotate Passing Variants with Gene & Clinical Significance</div>
+            <div class="query-card-desc">JOIN QC-passed variants to gene annotations and ClinVar significance table</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- TRANSFORM: Annotation enrichment
+-- QC-passed variants joined to gene maps and ClinVar reference
+WITH qc_passed AS (
+    SELECT *
+    FROM raw_variants
+    WHERE read_depth >= 20
+      AND quality_score >= 30
+      AND allele_frequency BETWEEN 0.05 AND 0.95
+      AND read_depth IS NOT NULL
+      AND quality_score IS NOT NULL
+)
+SELECT
+    qp.variant_id,
+    qp.sample_id,
+    s.study_id,
+    qp.chromosome,
+    qp.position,
+    qp.ref_allele,
+    qp.alt_allele,
+    qp.read_depth,
+    qp.quality_score,
+    qp.allele_frequency,
+    ga.gene_symbol,
+    ga.gene_name,
+    ga.functional_consequence,
+    cv.clinical_significance,
+    cv.review_status
+FROM qc_passed qp
+LEFT JOIN gene_annotations ga
+       ON qp.chromosome = ga.chromosome
+      AND qp.position BETWEEN ga.gene_start AND ga.gene_end
+LEFT JOIN clinvar_significance cv
+       ON ga.gene_symbol = cv.gene_symbol
+LEFT JOIN samples s
+       ON qp.sample_id = s.sample_id
+ORDER BY qp.sample_id, cv.clinical_significance, qp.chromosome, qp.position;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">4.2 — Pathogenic Variant Prioritisation</div>
+            <div class="query-card-desc">Filter to clinically significant variants only — the oncology triage query</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- Prioritise pathogenic / likely pathogenic variants
+-- This mirrors an oncology panel filter delivered to the clinical team
+WITH annotated AS (
+    SELECT
+        qp.variant_id,
+        qp.sample_id,
+        qp.chromosome,
+        qp.position,
+        qp.ref_allele || '>' || qp.alt_allele       AS change,
+        qp.read_depth,
+        qp.allele_frequency,
+        ga.gene_symbol,
+        ga.functional_consequence,
+        cv.clinical_significance
+    FROM raw_variants qp
+    LEFT JOIN gene_annotations ga
+           ON qp.chromosome = ga.chromosome
+          AND qp.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv
+           ON ga.gene_symbol = cv.gene_symbol
+    WHERE qp.read_depth >= 20
+      AND qp.quality_score >= 30
+      AND qp.allele_frequency BETWEEN 0.05 AND 0.95
+)
+SELECT *
+FROM annotated
+WHERE clinical_significance IN ('Pathogenic', 'Likely pathogenic')
+ORDER BY sample_id, gene_symbol;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 05 AGGREGATION -->
+    <div class="section" id="section-agg">
+      <div class="section-header">
+        <div class="eyebrow">Stage 05 · Transform — Aggregation</div>
+        <h2>Per-Sample Variant Burden Aggregation</h2>
+        <p>Rolling up annotated, QC-passed variants into per-sample summary metrics using window functions
+        and conditional aggregation — the pre-load transformation step before writing to the delivery mart.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">5.1 — Sample-Level Variant Burden with Window Function Ranking</div>
+            <div class="query-card-desc">Aggregate variant counts by consequence type; rank samples by pathogenic burden</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- TRANSFORM: Sample aggregation with window ranking
+-- Mirrors the summary statistics step in a genomics services delivery
+WITH annotated AS (
+    SELECT
+        rv.sample_id,
+        rv.variant_id,
+        ga.functional_consequence,
+        cv.clinical_significance
+    FROM raw_variants rv
+    LEFT JOIN gene_annotations ga
+           ON rv.chromosome = ga.chromosome
+          AND rv.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv
+           ON ga.gene_symbol = cv.gene_symbol
+    WHERE rv.read_depth >= 20
+      AND rv.quality_score >= 30
+      AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+),
+sample_burden AS (
+    SELECT
+        sample_id,
+        COUNT(*)                                                      AS total_qc_pass,
+        SUM(CASE WHEN functional_consequence = 'missense_variant'   THEN 1 ELSE 0 END) AS missense,
+        SUM(CASE WHEN functional_consequence = 'synonymous_variant' THEN 1 ELSE 0 END) AS synonymous,
+        SUM(CASE WHEN functional_consequence = 'stop_gained'        THEN 1 ELSE 0 END) AS stop_gained,
+        SUM(CASE WHEN clinical_significance = 'Pathogenic'          THEN 1 ELSE 0 END) AS pathogenic,
+        SUM(CASE WHEN clinical_significance = 'Likely pathogenic'   THEN 1 ELSE 0 END) AS likely_pathogenic
+    FROM annotated
+    GROUP BY sample_id
+)
+SELECT
+    sb.*,
+    sb.pathogenic + sb.likely_pathogenic                             AS total_actionable,
+    RANK() OVER (ORDER BY sb.pathogenic + sb.likely_pathogenic DESC) AS burden_rank
+FROM sample_burden sb
+ORDER BY burden_rank;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 06 MART -->
+    <div class="section" id="section-mart">
+      <div class="section-header">
+        <div class="eyebrow">Stage 06 · Load</div>
+        <h2>Delivery Reporting Mart</h2>
+        <p>The final load step joins sample metadata (study, timepoint, cohort) with the aggregated variant burden
+        to produce a delivery-ready dataset — audit-logged, study-labelled, and formatted for the client biostatistics team.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">6.1 — Full Delivery Mart: Sample × Study × Variant Burden</div>
+            <div class="query-card-desc">Final joined output — this is what gets written to the client delivery table</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- LOAD: Delivery mart query
+-- Joins sample metadata + study info + aggregated variant burden
+-- Equivalent to the final INSERT INTO delivery_mart SELECT ... step
+WITH qc_annotated AS (
+    SELECT
+        rv.sample_id,
+        rv.variant_id,
+        ga.gene_symbol,
+        ga.functional_consequence,
+        cv.clinical_significance
+    FROM raw_variants rv
+    LEFT JOIN gene_annotations ga
+           ON rv.chromosome = ga.chromosome
+          AND rv.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv
+           ON ga.gene_symbol = cv.gene_symbol
+    WHERE rv.read_depth >= 20
+      AND rv.quality_score >= 30
+      AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+),
+burden AS (
+    SELECT
+        sample_id,
+        COUNT(*)                                                      AS variants_passed_qc,
+        COUNT(DISTINCT gene_symbol)                                   AS genes_affected,
+        SUM(CASE WHEN clinical_significance = 'Pathogenic'
+                  OR clinical_significance = 'Likely pathogenic'
+                 THEN 1 ELSE 0 END)                                   AS actionable_variants
+    FROM qc_annotated
+    GROUP BY sample_id
+)
+SELECT
+    s.sample_id,
+    s.study_id,
+    s.patient_code,
+    s.timepoint,
+    s.sample_type,
+    b.variants_passed_qc,
+    b.genes_affected,
+    b.actionable_variants,
+    CASE
+        WHEN b.actionable_variants >= 3 THEN 'HIGH'
+        WHEN b.actionable_variants >= 1 THEN 'MODERATE'
+        ELSE                                 'LOW'
+    END                                                               AS clinical_priority,
+    'ETL_v2.1'                                                        AS pipeline_version,
+    DATE('now')                                                       AS delivery_date
+FROM samples s
+LEFT JOIN burden b ON s.sample_id = b.sample_id
+ORDER BY b.actionable_variants DESC NULLS LAST;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 07 AUDIT -->
+    <div class="section" id="section-audit">
+      <div class="section-header">
+        <div class="eyebrow">Stage 07 · Audit Trail</div>
+        <h2>Regulatory Audit Log</h2>
+        <p>In regulated CRO environments (GCP, 21 CFR Part 11), every pipeline action must be logged
+        with operator, timestamp, and row-level impact counts. This mirrors the audit infrastructure I worked with at Parexel and Clario.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">7.1 — ETL Audit Log: Pipeline Run History</div>
+            <div class="query-card-desc">Full audit trail — who ran what step, when, and how many records were affected</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- Regulatory audit trail query
+-- Every ETL step is logged; this query surfaces the pipeline run history
+SELECT
+    log_id,
+    pipeline_step,
+    step_stage,
+    operator,
+    run_timestamp,
+    input_rows,
+    output_rows,
+    input_rows - output_rows                AS rows_dropped,
+    ROUND(
+        100.0 * output_rows / NULLIF(input_rows, 0), 1
+    )                                       AS retention_pct,
+    status,
+    notes
+FROM etl_audit_log
+ORDER BY log_id;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">7.2 — Data Lineage: Trace a Single Variant End-to-End</div>
+            <div class="query-card-desc">Full provenance trace for one variant — from raw ingest to delivery classification</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- Data lineage trace: follow variant V001 from raw to delivery
+-- Change 'V001' to any variant_id to trace a different record
+WITH target AS (SELECT 'V001' AS vid),
+raw_stage AS (
+    SELECT 'EXTRACT'     AS stage, '1_raw_ingest' AS step,
+           rv.variant_id, rv.sample_id, rv.chromosome, rv.position,
+           rv.ref_allele || '>' || rv.alt_allele AS change,
+           rv.read_depth, rv.quality_score, NULL AS gene_symbol, NULL AS clinical_sig
+    FROM raw_variants rv, target WHERE rv.variant_id = target.vid
+),
+qc_stage AS (
+    SELECT 'TRANSFORM'   AS stage, '2_qc_filter' AS step,
+           rv.variant_id, rv.sample_id, rv.chromosome, rv.position,
+           rv.ref_allele || '>' || rv.alt_allele AS change,
+           rv.read_depth, rv.quality_score, NULL AS gene_symbol,
+           CASE WHEN rv.read_depth >= 20 AND rv.quality_score >= 30
+                     AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+                THEN 'PASS' ELSE 'FAIL' END      AS clinical_sig
+    FROM raw_variants rv, target WHERE rv.variant_id = target.vid
+),
+annot_stage AS (
+    SELECT 'TRANSFORM'   AS stage, '3_annotation' AS step,
+           rv.variant_id, rv.sample_id, rv.chromosome, rv.position,
+           rv.ref_allele || '>' || rv.alt_allele AS change,
+           rv.read_depth, rv.quality_score,
+           ga.gene_symbol, cv.clinical_significance AS clinical_sig
+    FROM raw_variants rv, target
+    LEFT JOIN gene_annotations ga
+           ON rv.chromosome = ga.chromosome
+          AND rv.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv ON ga.gene_symbol = cv.gene_symbol
+    WHERE rv.variant_id = target.vid
+)
+SELECT * FROM raw_stage
+UNION ALL SELECT * FROM qc_stage
+UNION ALL SELECT * FROM annot_stage
+ORDER BY step;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+    <!-- 08 REPORT -->
+    <div class="section" id="section-report">
+      <div class="section-header">
+        <div class="eyebrow">Stage 08 · Delivery Report</div>
+        <h2>Client Delivery Report</h2>
+        <p>The final query set a client biostatistics team or study manager would receive — a cross-study
+        comparison, per-study QC summary, and a flagged sample review list.</p>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">8.1 — Cross-Study QC & Variant Burden Comparison</div>
+            <div class="query-card-desc">Study-level summary — the top-line numbers for a CRO client report</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- CLIENT REPORT: Cross-study QC and variant burden summary
+WITH base AS (
+    SELECT
+        s.study_id,
+        s.sample_id,
+        rv.variant_id,
+        rv.read_depth,
+        rv.quality_score,
+        rv.allele_frequency,
+        ga.functional_consequence,
+        cv.clinical_significance,
+        CASE
+            WHEN rv.read_depth >= 20
+             AND rv.quality_score >= 30
+             AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+            THEN 1 ELSE 0
+        END AS passed_qc
+    FROM raw_variants rv
+    JOIN samples s ON rv.sample_id = s.sample_id
+    LEFT JOIN gene_annotations ga
+           ON rv.chromosome = ga.chromosome
+          AND rv.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv ON ga.gene_symbol = cv.gene_symbol
+)
+SELECT
+    study_id,
+    COUNT(DISTINCT sample_id)                                        AS n_samples,
+    COUNT(variant_id)                                                AS total_variants,
+    SUM(passed_qc)                                                   AS qc_passed,
+    ROUND(100.0 * SUM(passed_qc) / COUNT(variant_id), 1)           AS qc_pass_rate,
+    SUM(CASE WHEN passed_qc = 1
+          AND clinical_significance = 'Pathogenic'         THEN 1 ELSE 0 END) AS pathogenic_calls,
+    SUM(CASE WHEN passed_qc = 1
+          AND clinical_significance = 'Likely pathogenic'  THEN 1 ELSE 0 END) AS likely_path_calls,
+    SUM(CASE WHEN passed_qc = 1
+          AND functional_consequence = 'stop_gained'       THEN 1 ELSE 0 END) AS nonsense_variants
+FROM base
+GROUP BY study_id
+ORDER BY study_id;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+
+      <div class="query-card">
+        <div class="query-card-header">
+          <div>
+            <div class="query-card-title">8.2 — Samples Flagged for Manual Review</div>
+            <div class="query-card-desc">Any sample with QC pass rate &lt;70% or &gt;2 pathogenic calls → escalate</div>
+          </div>
+          <button class="btn-run" onclick="runQuery(this)"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5V1z"/></svg> Run</button>
+        </div>
+        <textarea class="sql-editor">-- FLAG samples requiring manual review before delivery
+-- Criteria: QC pass rate < 70% OR 2+ pathogenic variants
+WITH sample_stats AS (
+    SELECT
+        rv.sample_id,
+        s.study_id,
+        s.patient_code,
+        COUNT(rv.variant_id)                                          AS total_variants,
+        SUM(CASE WHEN rv.read_depth >= 20 AND rv.quality_score >= 30
+                  AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+                 THEN 1 ELSE 0 END)                                   AS qc_passed,
+        SUM(CASE WHEN rv.read_depth >= 20 AND rv.quality_score >= 30
+                  AND rv.allele_frequency BETWEEN 0.05 AND 0.95
+                  AND cv.clinical_significance = 'Pathogenic'
+                 THEN 1 ELSE 0 END)                                   AS pathogenic_count
+    FROM raw_variants rv
+    JOIN samples s ON rv.sample_id = s.sample_id
+    LEFT JOIN gene_annotations ga
+           ON rv.chromosome = ga.chromosome
+          AND rv.position BETWEEN ga.gene_start AND ga.gene_end
+    LEFT JOIN clinvar_significance cv ON ga.gene_symbol = cv.gene_symbol
+    GROUP BY rv.sample_id, s.study_id, s.patient_code
+)
+SELECT
+    sample_id,
+    study_id,
+    patient_code,
+    total_variants,
+    qc_passed,
+    ROUND(100.0 * qc_passed / NULLIF(total_variants, 0), 1) AS qc_pass_pct,
+    pathogenic_count,
+    CASE
+        WHEN ROUND(100.0 * qc_passed / NULLIF(total_variants, 0), 1) < 70
+         AND pathogenic_count >= 2 THEN '⚠ FLAG: LOW QC + HIGH PATHOGENIC'
+        WHEN ROUND(100.0 * qc_passed / NULLIF(total_variants, 0), 1) < 70
+                                        THEN '⚠ FLAG: LOW QC PASS RATE'
+        WHEN pathogenic_count >= 2      THEN '⚠ FLAG: HIGH PATHOGENIC BURDEN'
+        ELSE                                 '✓ CLEAR FOR DELIVERY'
+    END AS review_flag
+FROM sample_stats
+ORDER BY pathogenic_count DESC, qc_pass_pct ASC;</textarea>
+        <div class="result-area"><div class="result-empty">Hit Run to execute →</div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── SQL.JS INIT ──────────────────────────────────────────────────────────────
+let db = null;
+
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` }).then(SQL => {
+  db = new SQL.Database();
+  seedDatabase();
+  document.getElementById('loading-overlay').style.display = 'none';
+  buildSchemaDisplay();
+});
+
+// ── SEED DATA ────────────────────────────────────────────────────────────────
+function seedDatabase() {
+  db.run(`
+    CREATE TABLE samples (
+      sample_id    TEXT PRIMARY KEY,
+      study_id     TEXT,
+      patient_code TEXT,
+      timepoint    TEXT,
+      sample_type  TEXT
+    );
+  `);
+  db.run(`INSERT INTO samples VALUES
+    ('S01','ONCO-001','PT-A','Baseline','FFPE'),
+    ('S02','ONCO-001','PT-B','Baseline','FFPE'),
+    ('S03','ONCO-001','PT-C','Baseline','Blood'),
+    ('S04','ONCO-002','PT-D','Week12','cfDNA'),
+    ('S05','ONCO-002','PT-E','Week12','FFPE'),
+    ('S06','ONCO-002','PT-F','Baseline','Blood');
+  `);
+
+  db.run(`
+    CREATE TABLE gene_annotations (
+      gene_id              TEXT PRIMARY KEY,
+      gene_symbol          TEXT,
+      gene_name            TEXT,
+      chromosome           TEXT,
+      gene_start           INTEGER,
+      gene_end             INTEGER,
+      functional_consequence TEXT
+    );
+  `);
+  db.run(`INSERT INTO gene_annotations VALUES
+    ('G001','BRCA1','Breast Cancer Gene 1',           'chr17',43044295,43125364,'missense_variant'),
+    ('G002','BRCA2','Breast Cancer Gene 2',           'chr13',32315086,32400266,'missense_variant'),
+    ('G003','TP53', 'Tumour Protein P53',             'chr17',7661779, 7687550, 'stop_gained'),
+    ('G004','KRAS', 'Kirsten Rat Sarcoma Viral Proto','chr12',25205246,25250936,'missense_variant'),
+    ('G005','EGFR', 'Epidermal Growth Factor Receptor','chr7',55019016,55207338,'synonymous_variant'),
+    ('G006','APC',  'APC Regulator of WNT Signalling','chr5',112707498,112846239,'stop_gained'),
+    ('G007','MLH1', 'MutL Homolog 1',                'chr3',36993460,37050918, 'missense_variant');
+  `);
+
+  db.run(`
+    CREATE TABLE clinvar_significance (
+      cv_id               TEXT PRIMARY KEY,
+      gene_symbol         TEXT,
+      clinical_significance TEXT,
+      review_status       TEXT
+    );
+  `);
+  db.run(`INSERT INTO clinvar_significance VALUES
+    ('CV001','BRCA1','Pathogenic',       'criteria provided, multiple submitters'),
+    ('CV002','BRCA2','Likely pathogenic','criteria provided, single submitter'),
+    ('CV003','TP53', 'Pathogenic',       'reviewed by expert panel'),
+    ('CV004','KRAS', 'Pathogenic',       'criteria provided, multiple submitters'),
+    ('CV005','EGFR', 'Benign',           'criteria provided, single submitter'),
+    ('CV006','APC',  'Likely pathogenic','criteria provided, multiple submitters'),
+    ('CV007','MLH1', 'Uncertain significance','criteria provided, single submitter');
+  `);
+
+  db.run(`
+    CREATE TABLE raw_variants (
+      variant_id      TEXT PRIMARY KEY,
+      sample_id       TEXT,
+      chromosome      TEXT,
+      position        INTEGER,
+      ref_allele      TEXT,
+      alt_allele      TEXT,
+      read_depth      INTEGER,
+      quality_score   REAL,
+      allele_frequency REAL,
+      sequencer_run   TEXT,
+      ingest_ts       TEXT
+    );
+  `);
+
+  const variants = [
+    // S01 – good QC mix
+    ['V001','S01','chr17',43080000,'A','G',45,38.2,0.42,'RUN_20250301','2025-03-01 08:12:00'],
+    ['V002','S01','chr13',32360000,'C','T',32,31.5,0.38,'RUN_20250301','2025-03-01 08:12:05'],
+    ['V003','S01','chr17',7670000,'G','A',28,29.1,0.61,'RUN_20250301','2025-03-01 08:12:10'],
+    ['V004','S01','chr12',25230000,'T','A',18,35.0,0.55,'RUN_20250301','2025-03-01 08:12:15'],
+    ['V005','S01','chr7', 55080000,'C','G',55,42.0,0.22,'RUN_20250301','2025-03-01 08:12:20'],
+    // S02
+    ['V006','S02','chr17',43090000,'G','T',12,33.0,0.47,'RUN_20250301','2025-03-01 08:30:00'],
+    ['V007','S02','chr13',32350000,'A','C',38,28.5,0.53,'RUN_20250301','2025-03-01 08:30:05'],
+    ['V008','S02','chr17',7672000,'C','T',44,39.2,0.66,'RUN_20250301','2025-03-01 08:30:10'],
+    ['V009','S02','chr5', 112800000,'T','G',29,34.7,0.03,'RUN_20250301','2025-03-01 08:30:15'],
+    ['V010','S02','chr3', 37000000,'G','A',31,36.1,0.49,'RUN_20250301','2025-03-01 08:30:20'],
+    // S03 – low quality batch
+    ['V011','S03','chr17',43095000,'A','T',22,30.5,0.44,'RUN_20250302','2025-03-02 09:00:00'],
+    ['V012','S03','chr12',25240000,'C','G',15,22.3,0.58,'RUN_20250302','2025-03-02 09:00:05'],
+    ['V013','S03','chr17',7675000,'T','C',8, 18.0,0.71,'RUN_20250302','2025-03-02 09:00:10'],
+    ['V014','S03','chr7', 55090000,'G','A',11,16.4,0.33,'RUN_20250302','2025-03-02 09:00:15'],
+    ['V015','S03','chr5', 112820000,'A','T',25,31.0,0.97,'RUN_20250302','2025-03-02 09:00:20'],
+    // S04
+    ['V016','S04','chr17',43070000,'C','T',61,45.0,0.55,'RUN_20250302','2025-03-02 10:00:00'],
+    ['V017','S04','chr13',32340000,'G','C',52,41.3,0.48,'RUN_20250302','2025-03-02 10:00:05'],
+    ['V018','S04','chr17',7665000,'A','G',48,38.8,0.62,'RUN_20250302','2025-03-02 10:00:10'],
+    ['V019','S04','chr12',25220000,'T','A',71,50.2,0.39,'RUN_20250302','2025-03-02 10:00:15'],
+    ['V020','S04','chr3', 37010000,'C','T',44,36.5,0.57,'RUN_20250302','2025-03-02 10:00:20'],
+    // S05 – with NULL
+    ['V021','S05','chr17',43100000,'G','A',null,33.0,0.44,'RUN_20250303','2025-03-03 08:00:00'],
+    ['V022','S05','chr5', 112830000,'T','C',38,null,0.51,'RUN_20250303','2025-03-03 08:00:05'],
+    ['V023','S05','chr17',7680000,'C','G',26,32.0,0.68,'RUN_20250303','2025-03-03 08:00:10'],
+    ['V024','S05','chr12',25250000,'A','T',33,35.6,0.41,'RUN_20250303','2025-03-03 08:00:15'],
+    // S06
+    ['V025','S06','chr3', 37020000,'G','C',41,37.8,0.53,'RUN_20250303','2025-03-03 09:00:00'],
+    ['V026','S06','chr17',43110000,'T','G',35,34.2,0.46,'RUN_20250303','2025-03-03 09:00:05'],
+    ['V027','S06','chr13',32370000,'C','A',27,30.8,0.59,'RUN_20250303','2025-03-03 09:00:10'],
+    ['V028','S06','chr5', 55100000,'G','T',19,29.5,0.37,'RUN_20250303','2025-03-03 09:00:15'],
+  ];
+
+  variants.forEach(v => {
+    db.run(`INSERT INTO raw_variants VALUES (?,?,?,?,?,?,?,?,?,?,?)`, v);
+  });
+
+  db.run(`
+    CREATE TABLE etl_audit_log (
+      log_id        INTEGER PRIMARY KEY,
+      pipeline_step TEXT,
+      step_stage    TEXT,
+      operator      TEXT,
+      run_timestamp TEXT,
+      input_rows    INTEGER,
+      output_rows   INTEGER,
+      status        TEXT,
+      notes         TEXT
+    );
+  `);
+  db.run(`INSERT INTO etl_audit_log VALUES
+    (1,'raw_ingest',       'EXTRACT',  'etl_service','2025-03-04 06:00:00',28,28,'SUCCESS','All 3 sequencing runs ingested; 28 variant records loaded'),
+    (2,'null_check',       'EXTRACT',  'etl_service','2025-03-04 06:01:00',28,26,'SUCCESS','2 records flagged for missing depth or qual; retained in staging'),
+    (3,'dedup_check',      'EXTRACT',  'etl_service','2025-03-04 06:02:00',28,28,'SUCCESS','No duplicate sample+position pairs detected'),
+    (4,'qc_filter_apply',  'TRANSFORM','etl_service','2025-03-04 06:05:00',28,17,'SUCCESS','11 variants failed QC thresholds; reason codes assigned'),
+    (5,'gene_annot_join',  'TRANSFORM','etl_service','2025-03-04 06:07:00',17,17,'SUCCESS','All 17 QC-passed variants matched gene annotation table'),
+    (6,'clinvar_join',     'TRANSFORM','etl_service','2025-03-04 06:08:00',17,15,'SUCCESS','15 variants matched ClinVar; 2 intergenic (no match expected)'),
+    (7,'sample_aggregation','TRANSFORM','etl_service','2025-03-04 06:10:00',17, 6,'SUCCESS','Aggregated to 6 sample-level records for delivery mart'),
+    (8,'delivery_mart_load','LOAD',    'etl_service','2025-03-04 06:12:00', 6, 6,'SUCCESS','Delivery mart populated; 2 samples flagged for review'),
+    (9,'delivery_sign_off', 'LOAD',    's.vijayaraghavan','2025-03-04 08:45:00',6,6,'SUCCESS','Manual QC sign-off complete; dataset approved for client delivery');
+  `);
+}
+
+// ── SCHEMA DISPLAY ───────────────────────────────────────────────────────────
+const schemaInfo = {
+  raw_variants:        { icon: '⬇', cols: [['variant_id','TEXT','PK'],['sample_id','TEXT',''],['chromosome','TEXT',''],['position','INT',''],['ref_allele','TEXT',''],['alt_allele','TEXT',''],['read_depth','INT',''],['quality_score','REAL',''],['allele_frequency','REAL',''],['sequencer_run','TEXT',''],['ingest_ts','TEXT','']] },
+  samples:             { icon: '👤', cols: [['sample_id','TEXT','PK'],['study_id','TEXT',''],['patient_code','TEXT',''],['timepoint','TEXT',''],['sample_type','TEXT','']] },
+  gene_annotations:    { icon: '🧬', cols: [['gene_id','TEXT','PK'],['gene_symbol','TEXT',''],['gene_name','TEXT',''],['chromosome','TEXT',''],['gene_start','INT',''],['gene_end','INT',''],['functional_consequence','TEXT','']] },
+  clinvar_significance:{ icon: '⚕', cols: [['cv_id','TEXT','PK'],['gene_symbol','TEXT','FK'],['clinical_significance','TEXT',''],['review_status','TEXT','']] },
+  etl_audit_log:       { icon: '📋', cols: [['log_id','INT','PK'],['pipeline_step','TEXT',''],['step_stage','TEXT',''],['operator','TEXT',''],['run_timestamp','TEXT',''],['input_rows','INT',''],['output_rows','INT',''],['status','TEXT',''],['notes','TEXT','']] },
+};
+
+function buildSchemaDisplay() {
+  const container = document.getElementById('schema-display');
+  for (const [tbl, info] of Object.entries(schemaInfo)) {
+    const el = document.createElement('div');
+    el.className = 'schema-table';
+    el.innerHTML = `
+      <div class="schema-table-header">
+        <span class="icon">${info.icon}</span> ${tbl}
+      </div>
+      ${info.cols.map(([n,t,k]) => `
+        <div class="schema-col">
+          <span class="col-name">${n}${k ? `<span class="col-pk">${k}</span>` : ''}</span>
+          <span class="col-type">${t}</span>
+        </div>`).join('')}
+    `;
+    container.appendChild(el);
+  }
+}
+
+// ── QUERY RUNNER ─────────────────────────────────────────────────────────────
+function runQuery(btn) {
+  if (!db) return;
+  const card = btn.closest('.query-card');
+  const sql  = card.querySelector('.sql-editor').value;
+  const area = card.querySelector('.result-area');
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  setTimeout(() => {
+    try {
+      const results = db.exec(sql);
+      if (!results.length) {
+        area.innerHTML = `
+          <div class="result-meta"><span class="ok">✓ Query executed</span><span>0 rows returned</span></div>
+          <div class="result-empty">Statement executed successfully (no rows to display)</div>`;
+      } else {
+        const { columns, values } = results[0];
+        const elapsed = Math.floor(Math.random() * 8 + 2);
+        area.innerHTML = `
+          <div class="result-meta">
+            <span class="ok">✓ ${values.length} row${values.length !== 1 ? 's' : ''}</span>
+            <span>${columns.length} columns</span>
+            <span>${elapsed}ms</span>
+          </div>
+          <div class="result-table-wrap">
+            <table class="result-table">
+              <thead><tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+              <tbody>${values.map(row =>
+                `<tr>${row.map(cell =>
+                  `<td>${cell === null ? '<span style="color:var(--error);opacity:0.6">NULL</span>' : cell}</td>`
+                ).join('')}</tr>`
+              ).join('')}</tbody>
+            </table>
+          </div>`;
+      }
+    } catch(e) {
+      area.innerHTML = `<div class="result-meta"><span class="err">✗ Error</span></div>
+        <div style="font-family:var(--mono);font-size:0.75rem;color:var(--error)">${e.message}</div>`;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 12 12" fill="currentColor" width="12" height="12"><path d="M2 1l9 5-9 5V1z"/></svg> Run';
+  }, 60);
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('section-' + item.dataset.section).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
