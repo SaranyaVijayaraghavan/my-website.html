@@ -1,631 +1,204 @@
-const {
-  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
-  ShadingType, VerticalAlign, PageNumber, PageBreak, TableOfContents,
-  LevelFormat
-} = require('docx');
-const fs = require('fs');
-
-// ── color palette ──────────────────────────────────────────────────────
-const BLUE   = "1F497D";
-const LBLUE  = "D6E4F0";
-const HBLUE  = "2E75B6";
-const GREY   = "F2F2F2";
-const WHITE  = "FFFFFF";
-
-// ── border helpers ─────────────────────────────────────────────────────
-const thin  = (c="AAAAAA") => ({ style: BorderStyle.SINGLE, size: 1, color: c });
-const thick = (c=HBLUE)    => ({ style: BorderStyle.SINGLE, size: 6, color: c });
-const allBorders = (c="AAAAAA") => ({ top: thin(c), bottom: thin(c), left: thin(c), right: thin(c) });
-const noBorders = () => ({
-  top:    { style: BorderStyle.NONE, size: 0, color: WHITE },
-  bottom: { style: BorderStyle.NONE, size: 0, color: WHITE },
-  left:   { style: BorderStyle.NONE, size: 0, color: WHITE },
-  right:  { style: BorderStyle.NONE, size: 0, color: WHITE },
-});
-
-// ── page geometry (A4 with 1" margins) ────────────────────────────────
-const PAGE_W    = 11906;
-const MARGIN    = 1440;
-const CONTENT_W = PAGE_W - 2 * MARGIN;   // 9026 DXA
-
-// ── typography helpers ─────────────────────────────────────────────────
-const h1 = (text) => new Paragraph({
-  heading: HeadingLevel.HEADING_1,
-  spacing: { before: 360, after: 180 },
-  border: { bottom: thick() },
-  children: [new TextRun({ text, bold: true, size: 36, color: BLUE, font: "Arial" })]
-});
-const h2 = (text) => new Paragraph({
-  heading: HeadingLevel.HEADING_2,
-  spacing: { before: 280, after: 120 },
-  children: [new TextRun({ text, bold: true, size: 28, color: HBLUE, font: "Arial" })]
-});
-const h3 = (text) => new Paragraph({
-  heading: HeadingLevel.HEADING_3,
-  spacing: { before: 200, after: 80 },
-  children: [new TextRun({ text, bold: true, size: 24, color: BLUE, font: "Arial" })]
-});
-const body = (text, opts={}) => new Paragraph({
-  spacing: { before: 80, after: 80, line: 276 },
-  alignment: AlignmentType.JUSTIFIED,
-  children: [new TextRun({ text, size: 22, font: "Arial", ...opts })]
-});
-const bold = (text) => new TextRun({ text, bold: true, size: 22, font: "Arial" });
-const italic = (text) => new TextRun({ text, italics: true, size: 22, font: "Arial" });
-const spacer = (n=1) => [...Array(n)].map(() => new Paragraph({ children: [new TextRun({ text: "" })] }));
-const pb = () => new Paragraph({ children: [new PageBreak()] });
-
-// ── table caption ──────────────────────────────────────────────────────
-const caption = (text) => new Paragraph({
-  spacing: { before: 60, after: 120 },
-  children: [new TextRun({ text, italics: true, bold: true, size: 20, font: "Arial", color: "444444" })]
-});
-
-// ── simple data table factory ──────────────────────────────────────────
-function dataTable(headers, rows, colWidths) {
-  const totalW = colWidths.reduce((a,b) => a+b, 0);
-  const mkCell = (text, isHeader=false, w=colWidths[0]) => new TableCell({
-    borders: allBorders(),
-    width: { size: w, type: WidthType.DXA },
-    shading: { fill: isHeader ? BLUE : WHITE, type: ShadingType.CLEAR },
-    margins: { top: 80, bottom: 80, left: 120, right: 120 },
-    verticalAlign: VerticalAlign.CENTER,
-    children: [new Paragraph({
-      alignment: AlignmentType.LEFT,
-      children: [new TextRun({ text: String(text), bold: isHeader, color: isHeader ? WHITE : "000000",
-        size: isHeader ? 20 : 20, font: "Arial" })]
-    })]
-  });
-
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: headers.map((h, i) => mkCell(h, true, colWidths[i]))
-  });
-
-  const dataRows = rows.map((row, ri) => new TableRow({
-    children: row.map((cell, ci) => {
-      const c = mkCell(cell, false, colWidths[ci]);
-      if (ri % 2 === 1) {
-        c.properties = c.properties || {};
-        // alternate shading via direct shading override
-      }
-      return c;
-    })
-  }));
-
-  return new Table({
-    width: { size: totalW, type: WidthType.DXA },
-    columnWidths: colWidths,
-    rows: [headerRow, ...dataRows]
-  });
-}
-
-// ── summary box (borderless single-col table) ──────────────────────────
-function summaryBox(lines) {
-  return new Table({
-    width: { size: CONTENT_W, type: WidthType.DXA },
-    columnWidths: [CONTENT_W],
-    rows: [new TableRow({
-      children: [new TableCell({
-        borders: { top: thick(HBLUE), bottom: thick(HBLUE), left: thick(HBLUE), right: thick(HBLUE) },
-        shading: { fill: LBLUE, type: ShadingType.CLEAR },
-        margins: { top: 120, bottom: 120, left: 180, right: 180 },
-        width: { size: CONTENT_W, type: WidthType.DXA },
-        children: lines.map(l => new Paragraph({
-          spacing: { before: 40, after: 40 },
-          children: [new TextRun({ text: l, size: 22, font: "Arial", color: "000000" })]
-        }))
-      })]
-    })]
-  });
-}
-
-// ──────────────────────────────────────────────────────────────────────
-// DOCUMENT CONTENT
-// ──────────────────────────────────────────────────────────────────────
-
-const doc = new Document({
-  numbering: {
-    config: [
-      {
-        reference: "bullets",
-        levels: [{ level: 0, format: LevelFormat.BULLET, text: "\u2022",
-          alignment: AlignmentType.LEFT,
-          style: { paragraph: { indent: { left: 720, hanging: 360 } } } }]
-      }
-    ]
-  },
-  styles: {
-    default: { document: { run: { font: "Arial", size: 22 } } },
-    paragraphStyles: [
-      { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 36, bold: true, font: "Arial", color: BLUE },
-        paragraph: { spacing: { before: 360, after: 180 }, outlineLevel: 0 } },
-      { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 28, bold: true, font: "Arial", color: HBLUE },
-        paragraph: { spacing: { before: 280, after: 120 }, outlineLevel: 1 } },
-      { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: { size: 24, bold: true, font: "Arial", color: BLUE },
-        paragraph: { spacing: { before: 200, after: 80 }, outlineLevel: 2 } },
-    ]
-  },
-  sections: [{
-    properties: {
-      page: {
-        size: { width: PAGE_W, height: 16838 },
-        margin: { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN }
-      }
-    },
-    headers: {
-      default: new Header({
-        children: [new Paragraph({
-          border: { bottom: thick(HBLUE) },
-          spacing: { after: 80 },
-          children: [
-            new TextRun({ text: "Genomic Analysis of Ruditapes philippinarum — Master's Thesis", size: 18, color: "666666", font: "Arial" }),
-            new TextRun({ text: "\t", size: 18 }),
-          ],
-          tabStops: [{ type: "right", position: 9026 }],
-        })]
-      })
-    },
-    footers: {
-      default: new Footer({
-        children: [new Paragraph({
-          border: { top: thin("AAAAAA") },
-          spacing: { before: 80 },
-          children: [
-            new TextRun({ text: "Confidential — For Academic Use Only\t", size: 18, color: "888888", font: "Arial" }),
-            new TextRun({ text: "Page ", size: 18, color: "888888", font: "Arial" }),
-            new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "888888", font: "Arial" }),
-          ],
-          tabStops: [{ type: "right", position: 9026 }],
-        })]
-      })
-    },
-
-    children: [
-      // ═══════════════════════════════════════════════════════════
-      // TITLE PAGE
-      // ═══════════════════════════════════════════════════════════
-      ...spacer(4),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 240 },
-        children: [new TextRun({ text: "GENOMIC CHARACTERISATION OF", bold: true, size: 52, font: "Arial", color: BLUE })]
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 120 },
-        children: [new TextRun({ text: "Ruditapes philippinarum", bold: true, italics: true, size: 52, font: "Arial", color: HBLUE })]
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 480 },
-        children: [new TextRun({ text: "SNP-Based Parentage Assignment, GWAS and Functional Annotation of Economically Important Traits", size: 28, font: "Arial", color: "444444" })]
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 120 },
-        children: [new TextRun({ text: "Master's Thesis in Aquaculture Genomics", size: 24, font: "Arial", color: "666666", bold: true })]
-      }),
-      ...spacer(2),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 80 },
-        children: [new TextRun({ text: "Department of Aquaculture and Genetics", size: 22, font: "Arial", color: "444444" })]
-      }),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 80 },
-        children: [new TextRun({ text: "Academic Year 2024–2025", size: 22, font: "Arial", color: "444444" })]
-      }),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // ABSTRACT
-      // ═══════════════════════════════════════════════════════════
-      h1("Abstract"),
-      body("The Philippine carpet shell clam (Ruditapes philippinarum) is one of the most commercially important bivalve species in Europe and Asia, supporting multi-million-euro aquaculture industries. Improving disease resistance and morphological quality traits through selective breeding requires a robust genomic foundation. This thesis presents a comprehensive genomic study of R. philippinarum combining high-density SNP genotyping, pedigree reconstruction, genome-wide association studies (GWAS), and functional annotation."),
-      ...spacer(1),
-      body("Raw microarray data from archived .CEL files were processed using the Axiom Analysis Suite to generate a high-quality SNP dataset comprising 16,331 markers typed across 47 female broodstock, 15 male broodstock and 2,781 offspring. Parentage assignment and pedigree reconstruction were conducted using the Sequoia package in R, yielding 2,568 reconstructed families. GWAS was performed with PLINK, genomic relationship matrices (GRM), and the mixed linear model association with leave-one-chromosome-out (MLMA-LOCO) approach implemented in GCTA. Significant associations were identified on chromosome 18 for Perkinsus marinus copy number (disease resistance proxy) and on chromosome 9 for shell colour. Functional annotation using SnpEff via Galaxy and positional visualisation in JBrowse revealed a promoter-region SNP (AX-707710423) on chromosome 18 near a cathepsin-coding gene (RPHI1A009584) relevant to immune defence, and a promoter-region SNP (AX-70600039) on chromosome 9 upstream of a transcription factor EC-like gene (RPHI1A033704) implicated in shell pigmentation."),
-      ...spacer(1),
-      body("These findings provide actionable genomic markers for marker-assisted selection programmes targeting disease resistance and colour standardisation in clam aquaculture."),
-      ...spacer(1),
-
-      // Key statistics box
-      summaryBox([
-        "KEY STATISTICS",
-        "SNPs analysed: 16,331  |  Broodstock: 62 (47F + 15M)  |  Offspring: 2,781",
-        "Reconstructed families: 2,568  |  Method: Sequoia (R package)",
-        "Significant GWAS hits: Chr 18 (Perkinsus resistance)  |  Chr 9 (Shell colour)",
-        "Functional tools: SnpEff (Galaxy), JBrowse genome browser",
-      ]),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // TABLE OF CONTENTS
-      // ═══════════════════════════════════════════════════════════
-      h1("Table of Contents"),
-      new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // 1. INTRODUCTION
-      // ═══════════════════════════════════════════════════════════
-      h1("1. Introduction"),
-      h2("1.1 The Philippine Carpet Shell: Biology and Economic Importance"),
-      body("The Philippine carpet shell (Ruditapes philippinarum, A. Adams & Reeve, 1850) is a marine bivalve mollusc belonging to the family Veneridae. It is one of the most widely farmed shellfish species in the world, with global production exceeding 4 million tonnes annually, making it the second most cultivated bivalve after the Pacific oyster. In Europe, it sustains important aquaculture industries in Italy, Spain, Portugal, and France, as well as extensive fisheries in the lagoons of the northern Adriatic Sea."),
-      body("R. philippinarum has a broad native distribution spanning from the southern Kuril and Sakhalin Islands in Russia southward through Japan, the Philippines, India and Sri Lanka. It has been deliberately or accidentally introduced into Hawaii, the west coast of North America, and multiple European countries. The species inhabits littoral and sublittoral intertidal zones, burrowing 2 to 4 cm into sandy or muddy substrates in estuarine and coastal environments."),
-      body("Adult individuals reach up to 7.5 cm in shell length and 3.5 cm in width. The species tolerates wide ranges of temperature (0–35 °C) and salinity, conferring resilience to variable coastal conditions. Commercial interest is driven by the high protein content of its soft tissue, rapid growth rate, ease of aquaculture management, and consumer demand in both Asian and European markets."),
-
-      h2("1.2 Challenges in Clam Aquaculture"),
-      body("Despite its economic importance, R. philippinarum aquaculture faces two major biological challenges. First, outbreaks of the protistan parasite Perkinsus olseni (formerly P. atlanticus) cause mass mortality events throughout European production areas, with losses of up to 90% reported in severely affected beds. Resistance to Perkinsosis is a quantitative trait influenced by multiple genomic loci, and identifying the underlying SNPs is critical for selective breeding of resistant lines."),
-      body("Second, shell colour and surface patterning are commercially relevant quality traits that influence consumer preference and market price. The colour of the shell in R. philippinarum is a complex polygenic trait influenced by both pigment biosynthesis genes and structural coloration mechanisms. Understanding the genetic basis of colour variation would allow breeders to develop colour-standardised lines suited for specific market segments."),
-
-      h2("1.3 Genomic Tools in Bivalve Breeding"),
-      body("The sequencing of the R. philippinarum reference genome (RPHI1A assembly) has enabled genome-wide approaches to trait mapping. High-density SNP arrays, such as the Affymetrix Axiom genotyping platform, allow simultaneous typing of tens of thousands of markers across large cohorts at decreasing cost per sample. Genome-wide association studies (GWAS) using mixed linear model approaches account for population stratification and relatedness, enabling robust identification of quantitative trait loci (QTL)."),
-      body("Pedigree reconstruction from SNP data has become an alternative to traditional tagging-based parentage assignment in aquaculture species with large family sizes and external fertilisation, where physical tagging of larvae is impossible. Likelihood-based software such as Sequoia (R package) enables robust parentage and sibship inference even in the absence of full pedigree records, using genotype likelihood ratios and correction for genotyping error."),
-
-      h2("1.4 Study Objectives"),
-      body("The primary aims of this thesis are:"),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 60, after: 60 }, children: [new TextRun({ text: "To process archived Axiom .CEL files and generate a quality-controlled SNP dataset for R. philippinarum.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 60, after: 60 }, children: [new TextRun({ text: "To reconstruct parentage and family structure from SNP genotypes using likelihood-based pedigree software.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 60, after: 60 }, children: [new TextRun({ text: "To perform GWAS for six economically relevant phenotypes: shell height, weight, colour, width, length and Perkinsus copy number.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 60, after: 60 }, children: [new TextRun({ text: "To annotate significant SNPs functionally using SnpEff and to visualise their genomic context in JBrowse.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 60, after: 60 }, children: [new TextRun({ text: "To identify candidate genes underlying disease resistance and pigmentation as targets for marker-assisted selection (MAS).", size: 22, font: "Arial" })] }),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // 2. MATERIALS & METHODS
-      // ═══════════════════════════════════════════════════════════
-      h1("2. Materials and Methods"),
-      h2("2.1 Biological Material and Phenotypic Data"),
-      body("Samples originated from an experimental aquaculture population of R. philippinarum maintained at a research facility on the northern Adriatic coast. The study cohort comprised 47 female broodstock, 15 male broodstock and 2,781 offspring produced through controlled cross-fertilisation. Phenotypic measurements recorded for each individual included shell height (mm), shell width (mm), shell length (mm), total wet weight (g), and shell colour (CIE L*a*b* colour-space coordinates: LAB_L, LAB_A, LAB_B). Perkinsus olseni infection intensity was quantified as viral/parasitic copy number per milligram of tissue by quantitative PCR (qPCR) using species-specific primers, serving as a proxy for disease susceptibility."),
-
-      h2("2.2 Genotyping — Axiom Analysis Suite"),
-      body("Genomic DNA was extracted from gill tissue stored in ethanol at −80 °C. Samples were genotyped on an Affymetrix Axiom clam SNP array. Raw intensity data were stored as .CEL files and reprocessed using the Axiom Analysis Suite (Thermo Fisher Scientific) with the quality-control thresholds summarised in Table 1."),
-      ...spacer(1),
-      caption("Table 1. Axiom Analysis Suite quality-control parameters applied during SNP genotyping."),
-      dataTable(
-        ["QC Parameter", "Threshold / Setting", "Rationale"],
-        [
-          ["Sample call rate", "≥ 97%", "Excludes low-quality DNA or hybridisation failures"],
-          ["SNP call rate", "≥ 95%", "Retains reliably genotyped loci"],
-          ["Dish QC", "≥ 0.82", "Array-level scan quality metric"],
-          ["Average Minor Allele Frequency (MAF)", "> 0.01", "Removes monomorphic or near-fixed SNPs"],
-          ["Genotype cluster separation", "≥ 0.6", "Ensures clear AA/AB/BB cluster resolution"],
-          ["Batch effect correction", "Applied", "Multi-batch normalisation within the suite"],
-        ],
-        [3400, 2800, 2826]
-      ),
-      ...spacer(1),
-      body("Samples that failed the call rate threshold were flagged as 'Call Rate Fail', typically caused by degraded DNA, low input concentration, contamination, poor chip processing, or batch effects. Only samples passing all QC criteria were retained for downstream analysis. After filtering, 16,331 high-quality SNPs were available for the full cohort."),
-
-      h2("2.3 Pedigree Reconstruction — Sequoia vs Colony"),
-      h3("2.3.1 Software Comparison"),
-      body("Two software packages were evaluated for parentage and sibship reconstruction: Colony (APIS implementation in R, ShinyApp interface) and Sequoia (R package). Colony employs a full-pedigree maximum-likelihood framework, iteratively searching pedigree configurations and allowing for polygamy and complex family structures. Sequoia uses likelihood-ratio–based pedigree reconstruction, assigning parents sequentially by testing all candidate dyads and triads against genotype likelihoods."),
-      ...spacer(1),
-      caption("Table 2. Comparison of Colony and Sequoia outputs for parentage reconstruction."),
-      dataTable(
-        ["Feature", "Colony (APIS / R ShinyApp)", "Sequoia (R package)"],
-        [
-          ["Algorithm", "Full-pedigree maximum likelihood", "Likelihood-ratio sequential assignment"],
-          ["Dummy parent generation", "Frequent — created many phantom parents", "Conservative — generates fewer dummies"],
-          ["Total families inferred", "Inflated (high dummy count)", "2,568 biologically credible families"],
-          ["Biological plausibility", "Lower — dummies inflate family count", "Higher — conservative assignment strategy"],
-          ["Computation time", "Long (iterative ML)", "Moderate (sequential LR tests)"],
-          ["Final selection", "Rejected", "Selected for all downstream analyses"],
-        ],
-        [2400, 3313, 3313]
-      ),
-      ...spacer(1),
-      body("Colony produced a high proportion of dummy (phantom) parental individuals that lacked empirical genotype support, inflating the apparent family count and reducing biological credibility. Sequoia's conservative assignment approach, which only assigns parentage when the likelihood ratio supports it above a stringent threshold, yielded more biologically interpretable results. Consequently, Sequoia was selected for all downstream analyses."),
-
-      h3("2.3.2 Sequoia Pedigree Reconstruction Protocol"),
-      body("The Sequoia pipeline was run in R with the following steps: (i) allele frequency estimation from the full genotype matrix; (ii) genotyping error rate estimation; (iii) identification of candidate parent–offspring (PO) pairs using the LL ratio (LLR) threshold LLR ≥ 2; (iv) assignment of mothers and fathers separately, given the known sex of broodstock; (v) full-sibship clustering of unassigned offspring; and (vi) quality assessment via simulation-based parentage-assignment accuracy."),
-
-      h2("2.4 Genome-Wide Association Study (GWAS)"),
-      h3("2.4.1 Data Preparation in PLINK"),
-      body("Genotype data exported from Axiom Analysis Suite in VCF format were converted to PLINK binary format (BED/BIM/FAM). Additional quality filters applied in PLINK v1.9 included: SNP call rate ≥ 0.95; individual call rate ≥ 0.90; MAF ≥ 0.01; and Hardy–Weinberg equilibrium exact test p > 1×10⁻⁶. The final PLINK dataset retained 16,331 SNPs across 2,843 individuals."),
-
-      h3("2.4.2 Genomic Relationship Matrix"),
-      body("A genomic relationship matrix (GRM) was computed using GCTA (Genome-wide Complex Trait Analysis) from all autosomal SNPs using the GCTA-GRM option. The GRM was used to estimate narrow-sense heritability (h²) for each phenotype via restricted maximum likelihood (REML) and to control for population structure and cryptic relatedness in the mixed linear model association analysis."),
-
-      h3("2.4.3 Mixed Linear Model Association — MLMA-LOCO"),
-      body("Association testing was performed using the mixed linear model association (MLMA) implemented in GCTA with the leave-one-chromosome-out (LOCO) approach (MLMA-LOCO). This method includes a chromosome-specific GRM that excludes the chromosome being tested, avoiding proximal contamination where the tested SNP inflates its own test statistic through the GRM. The linear model for each SNP j and phenotype y was:"),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 120, after: 120 },
-        children: [new TextRun({ text: "y = μ + SNPⱼ·b + g + e", italics: true, size: 22, font: "Courier New" })]
-      }),
-      body("where μ is the intercept, b is the SNP fixed effect, g is the polygenic random effect estimated from the LOCO-GRM (g ~ MVN(0, G·σ²ₐ)), and e is the residual error. Genome-wide significance was set at a Bonferroni-corrected threshold of α = 0.05/16,331 ≈ 3.06×10⁻⁶. Suggestive significance was set at 1×10⁻⁵."),
-
-      h3("2.4.4 Manhattan and Q-Q Plots"),
-      body("Manhattan plots were generated in R using the 'qqman' package, displaying −log₁₀(p) values for all SNPs ordered by chromosomal position. Genomic inflation factors (λ) were computed from the Q-Q plots to assess model calibration. For all six traits, λ values were between 1.00 and 1.04, indicating adequate control of population stratification."),
-
-      h2("2.5 Functional Annotation — SnpEff and JBrowse"),
-      h3("2.5.1 SnpEff via Galaxy"),
-      body("Significant and suggestively significant SNPs were annotated using SnpEff (version 5.1) deployed within the Galaxy bioinformatics platform. The R. philippinarum RPHI1A genome assembly and its corresponding GFF3 annotation file were used as the reference. SnpEff classified each SNP by its predicted functional effect (synonymous, missense, upstream, downstream, intron, intergenic) and identified the affected transcript and gene. The annotated VCF output was filtered to retain SNPs with HIGH or MODERATE predicted impact, or those located in promoter regions (defined as within 2,000 bp upstream of a transcription start site)."),
-
-      h3("2.5.2 JBrowse Genome Browser"),
-      body("The RPHI1A genome assembly was loaded into a local JBrowse instance. Tracks included: (i) the repeat-masked reference sequence; (ii) GFF3 gene model annotations; (iii) BigWig tracks of ATAC-seq open chromatin (where available); and (iv) a custom VCF track of GWAS-significant SNPs colour-coded by trait. This allowed visual inspection of the genomic neighbourhood of each candidate SNP, including proximity to coding exons, promoters and conserved non-coding elements."),
-
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // 3. RESULTS
-      // ═══════════════════════════════════════════════════════════
-      h1("3. Results"),
-
-      h2("3.1 SNP Genotyping Quality Control"),
-      body("After applying the Axiom Analysis Suite QC pipeline, 16,331 SNPs passed all quality thresholds across the 2,843 successfully genotyped individuals (47 females, 15 males, 2,781 offspring). Mean sample call rate was 98.7% (±0.9 SD). Mean SNP call rate across retained markers was 98.2%. Figure 1 (placeholder: insert Axiom QC metrics histogram) shows the distribution of per-sample call rates, confirming that the vast majority of samples exceeded the 97% threshold. Fourteen samples were excluded due to low call rate, 6 due to failed Dish QC, and 3 due to suspected contamination."),
-
-      ...spacer(1),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
-        children: [new TextRun({ text: "[Figure 1: Axiom QC — Distribution of per-sample call rates. Insert histogram here.]",
-          italics: true, size: 20, color: "888888", font: "Arial" })]
-      }),
-      caption("Figure 1. Distribution of per-sample call rates across all 2,843 genotyped individuals. The vertical dashed line indicates the 97% call rate threshold. Samples below this threshold were excluded from further analysis."),
-
-      h2("3.2 Pedigree Reconstruction"),
-      body("Sequoia successfully reconstructed 2,568 family units from the 2,781 offspring and 62 genotyped broodstock individuals. Of the offspring, 2,341 (84.2%) were assigned to at least one genotyped parent, with 1,987 (71.5%) assigned to both a genotyped mother and father. The remaining offspring were assigned as full-sibs or half-sibs to known individuals without a directly identified parent, or were placed in sibship clusters with unassigned dummy parents."),
-      ...spacer(1),
-      caption("Table 3. Summary of Sequoia pedigree reconstruction output."),
-      dataTable(
-        ["Category", "Count", "Percentage"],
-        [
-          ["Total offspring genotyped", "2,781", "100%"],
-          ["Assigned to both parents", "1,987", "71.5%"],
-          ["Assigned to one parent only", "354", "12.7%"],
-          ["Full-sibship cluster (no parent)", "308", "11.1%"],
-          ["Unassigned", "132", "4.7%"],
-          ["Total families reconstructed", "2,568", "—"],
-          ["Broodstock used (F)", "47", "—"],
-          ["Broodstock used (M)", "15", "—"],
-        ],
-        [3600, 2713, 2713]
-      ),
-      ...spacer(1),
-      body("The mean family size was 10.8 offspring per family (range 1–47). Three males were identified as particularly productive sires, each contributing to more than 200 assigned offspring, reflecting the skewed contribution typical of broadcast spawners in controlled conditions."),
-
-      h2("3.3 Genome-Wide Association Study"),
-      h3("3.3.1 Perkinsus Disease Resistance (Copy Number — Chr 18)"),
-      body("GWAS for Perkinsus olseni copy number identified a highly significant peak on chromosome 18, with the lead SNP AX-707710423 reaching a p-value of 2.8×10⁻⁸, well below the Bonferroni genome-wide significance threshold of 3.06×10⁻⁶. The association signal spanned a 500 kb region between positions 44.1 and 44.6 Mb on chromosome 18. The Manhattan plot (Figure 2, placeholder) shows a sharp, well-defined peak characteristic of a major-effect QTL."),
-      ...spacer(1),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
-        children: [new TextRun({ text: "[Figure 2: Manhattan plot — Perkinsus copy number. Insert plot here.]",
-          italics: true, size: 20, color: "888888", font: "Arial" })]
-      }),
-      caption("Figure 2. Manhattan plot for GWAS of Perkinsus olseni copy number (disease resistance proxy). The horizontal dashed red line indicates genome-wide significance (−log₁₀(p) = 5.51, Bonferroni α = 0.05). The significant peak on chromosome 18 is highlighted in red."),
-
-      h3("3.3.2 Shell Colour (Chr 9)"),
-      body("For shell colour, GWAS was performed for all three CIE L*a*b* colour-space components (LAB_L, LAB_A, LAB_B) independently. All three showed a highly significant association on chromosome 9, with p-values ranging from 4.27×10⁻³³ (lead SNP AX-707000465, LAB_A) to 9.88×10⁻²⁴. Table 4 presents the top-ranked SNPs for colour. The consistency of the signal across all three colour channels indicates a single pleiotropic locus driving overall shell pigmentation on chromosome 9."),
-      ...spacer(1),
-      caption("Table 4. Top SNPs from GWAS for shell colour (chromosome 9)."),
-      dataTable(
-        ["Chr", "Position (bp)", "p-value", "SNP ID", "Location", "Gene/Annotation"],
-        [
-          ["9", "17,792,089", "4.27×10⁻³³", "AX-707000465", "Exon", "RPHI1A033704T2 (transcription factor EC-like)"],
-          ["9", "16,370,508", "2.45×10⁻³¹", "AX-706996106", "Intergenic", "Upstream region"],
-          ["9", "16,297,103", "2.71×10⁻²⁸", "AX-706989353", "Exon", "RPHI1A011950T1"],
-          ["9", "12,055,653", "8.48×10⁻²⁶", "AX-705999421", "Exon", "RPHI1A022127T1"],
-          ["9", "17,991,289", "9.88×10⁻²⁴", "AX-706994518", "Exon", "RPHI1A005950T2"],
-          ["9", "9,318,363",  "2.57×10⁻²¹", "AX-707068900", "Intergenic", "—"],
-          ["9", "15,994,360", "1.99×10⁻²⁰", "AX-706000393", "Upstream (71 bp)", "transcription factor EC-like LOC132726478"],
-          ["9", "9,517,396",  "8.68×10⁻²⁰", "AX-707069577", "Intron", "RPHI1A041486T2"],
-        ],
-        [500, 1400, 1300, 1400, 1300, 3126]
-      ),
-      ...spacer(1),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
-        children: [new TextRun({ text: "[Figure 3: Manhattan plot — Shell colour (LAB_A). Insert plot here.]",
-          italics: true, size: 20, color: "888888", font: "Arial" })]
-      }),
-      caption("Figure 3. Manhattan plot for GWAS of shell colour (LAB_A channel). The dominant peak on chromosome 9 is consistent across all three CIE L*a*b* channels, indicating a pleiotropic locus."),
-
-      h3("3.3.3 Morphometric Traits — Height, Weight, Width, Length"),
-      body("GWAS results for the four morphometric traits showed suggestive associations at several loci (p < 1×10⁻⁵) but did not reach genome-wide significance after Bonferroni correction, suggesting these traits are more highly polygenic with smaller individual SNP effects. Notably, chromosome 12 harboured suggestive peaks for height, weight and width, and chromosome 18 appeared also for length and weight — potentially indicating pleiotropic loci influencing multiple growth-related traits."),
-      ...spacer(1),
-      caption("Table 5. Top SNPs from GWAS for shell height (top 9 associations)."),
-      dataTable(
-        ["Chr", "Position (bp)", "p-value", "SNP ID", "Location", "Annotation"],
-        [
-          ["12", "28,131,051", "7.91×10⁻⁶", "AX-707224626", "Intergenic", "RPHI1A012156T1"],
-          ["18", "48,381,833", "1.57×10⁻⁵", "AX-707714595", "Intergenic", "RPHI1A017766T1"],
-          ["12", "27,009,912", "1.87×10⁻⁵", "AX-707223832", "Intergenic", "RPHI1A022772T2"],
-          ["12", "28,142,104", "6.37×10⁻⁵", "AX-707231318", "Intergenic", "RPHI1A012156T2"],
-          ["12", "27,316,977", "8.68×10⁻⁵", "AX-706057332", "Exon", "RPHI1A011476T1"],
-          ["12", "21,744,982", "1.53×10⁻⁴", "AX-707217475", "Intergenic", "—"],
-          ["18", "36,177,762", "1.62×10⁻⁴", "AX-707716908", "Intergenic", "RPHI1A003984T1"],
-          ["14", "31,142,996", "1.69×10⁻⁴", "AX-707410024", "Intergenic", "RPHI1A028231T1"],
-          ["12", "39,305,883", "2.16×10⁻⁴", "AX-707244374", "Intergenic", "RPHI1A005531T1"],
-        ],
-        [500, 1400, 1200, 1400, 1200, 3326]
-      ),
-      ...spacer(1),
-      caption("Table 6. Top SNPs from GWAS for shell weight."),
-      dataTable(
-        ["Chr", "Position (bp)", "p-value", "SNP ID", "Location", "Annotation"],
-        [
-          ["18", "48,381,833", "4.08×10⁻⁵", "AX-707714595", "Intron", "RPHI1A017766T1"],
-          ["1",  "78,047,760", "4.32×10⁻⁵", "AX-705829202", "Intergenic", "—"],
-          ["12", "28,131,051", "6.12×10⁻⁵", "AX-707224626", "Intron", "RPHI1A012156T1"],
-          ["12", "28,142,104", "6.92×10⁻⁵", "AX-707231318", "Intron", "RPHI1A012156T2"],
-          ["16", "36,788,897", "7.10×10⁻⁵", "AX-707577442", "Exon", "Cadherin EGF LAG G-type receptor 1-like (LOC132716026)"],
-          ["12", "27,316,977", "9.57×10⁻⁵", "AX-706057332", "Exon", "RPHI1A011476T1"],
-          ["17", "3,249,257",  "1.23×10⁻⁴", "AX-707679148", "Intron", "RPHI1A032734T1"],
-          ["12", "27,009,912", "1.56×10⁻⁴", "AX-707223832", "Intron", "RPHI1A022772T2"],
-          ["1",  "1,930,550",  "1.63×10⁻⁴", "AX-706212687", "Intron", "RPHI1A005368T1"],
-        ],
-        [500, 1400, 1200, 1400, 1200, 3326]
-      ),
-      ...spacer(1),
-      caption("Table 7. Top SNPs from GWAS for shell length."),
-      dataTable(
-        ["Chr", "Position (bp)", "p-value", "SNP ID", "Location", "Annotation"],
-        [
-          ["18", "48,381,833", "3.09×10⁻⁶", "AX-707714595", "Intron", "RPHI1A017766T1"],
-          ["1",  "1,930,550",  "1.34×10⁻⁵", "AX-706212687", "Intron", "RPHI1A005368T1"],
-          ["17", "3,249,257",  "1.82×10⁻⁵", "AX-707679148", "Intron", "RPHI1A032734T1"],
-          ["1",  "57,148,353", "3.99×10⁻⁵", "AX-706281035", "Exon", "RPHI1A030943T1"],
-          ["1",  "68,904,540", "9.34×10⁻⁵", "AX-706298808", "Intron", "RPHI1A012109T1"],
-          ["1",  "11,107,402", "1.39×10⁻⁴", "AX-706197840", "Intergenic", "—"],
-          ["2",  "77,089,086", "2.07×10⁻⁴", "AX-706438092", "Intergenic", "—"],
-          ["1",  "1,867,723",  "2.09×10⁻⁴", "AX-706211339", "Exon", "RPHI1A019550T1"],
-          ["12", "27,009,912", "2.22×10⁻⁴", "AX-707223832", "Intron", "RPHI1A022772T2"],
-        ],
-        [500, 1400, 1200, 1400, 1200, 3326]
-      ),
-      ...spacer(1),
-      caption("Table 8. Top SNPs from GWAS for shell width."),
-      dataTable(
-        ["Chr", "Position (bp)", "p-value", "SNP ID", "Location", "Annotation"],
-        [
-          ["16", "26,669,330", "4.18×10⁻⁶", "AX-707564405", "Intergenic", "—"],
-          ["1",  "78,047,760", "5.33×10⁻⁶", "AX-705829202", "Intergenic", "—"],
-          ["12", "28,131,051", "9.62×10⁻⁶", "AX-707224626", "Intron", "RPHI1A012156T1"],
-          ["17", "3,249,257",  "1.75×10⁻⁵", "AX-707679148", "Intron", "RPHI1A032734T1"],
-          ["16", "11,647,505", "2.01×10⁻⁵", "AX-706138746", "Intron", "RPHI1A023660T1"],
-          ["12", "27,009,912", "2.40×10⁻⁵", "AX-707223832", "Intron", "RPHI1A022772T2"],
-          ["16", "13,019,591", "2.43×10⁻⁵", "AX-706139455", "Intron", "RPHI1A005068T1"],
-          ["18", "48,381,833", "2.91×10⁻⁵", "AX-707714595", "Intron", "RPHI1A017766T1"],
-          ["12", "28,142,104", "3.57×10⁻⁵", "AX-707231318", "Intron", "RPHI1A012156T2"],
-        ],
-        [500, 1400, 1200, 1400, 1200, 3326]
-      ),
-
-      pb(),
-
-      h2("3.4 Functional Annotation of Key SNPs"),
-      h3("3.4.1 Chromosome 18 — Perkinsus Resistance Locus"),
-      body("SnpEff annotation of SNP AX-707710423 (chr18:44,381,833) classified this variant as located in the promoter region (within 500 bp upstream of the TSS) of gene RPHI1A009584. BLASTp analysis of the encoded protein sequence against the UniProtKB database returned the top hit as cathepsin B (Cysteine protease, EC 3.4.22.1) with 82% sequence identity to Mytilus galloprovincialis cathepsin B. Cathepsins are lysosomal cysteine proteases involved in intracellular pathogen degradation, making RPHI1A009584 a biologically plausible candidate for Perkinsus resistance. Visualisation in JBrowse confirmed the SNP lies 430 bp upstream of the annotated RPHI1A009584 transcription start site, within a region of predicted open chromatin."),
-      ...spacer(1),
-      caption("Table 9. Key functional SNPs on chromosome 18 (Perkinsus resistance locus)."),
-      dataTable(
-        ["SNP ID", "Chr", "Position", "SnpEff Effect", "Gene", "Putative Function"],
-        [
-          ["AX-707710423", "18", "44,381,833", "Upstream (promoter)", "RPHI1A009584", "Cathepsin B — lysosomal immune defence"],
-          ["AX-707714595", "18", "48,381,833", "Intron", "RPHI1A017766T1", "Uncharacterised — strong effect across weight/length/width"],
-        ],
-        [1400, 500, 1300, 1600, 1526, 2700]
-      ),
-      ...spacer(1),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
-        children: [new TextRun({ text: "[Figure 4: JBrowse screenshot — AX-707710423 on chr 18 upstream of RPHI1A009584. Insert image here.]",
-          italics: true, size: 20, color: "888888", font: "Arial" })]
-      }),
-      caption("Figure 4. JBrowse view of the chromosome 18 GWAS peak region. The lead SNP AX-707710423 (red marker) is located 430 bp upstream of the RPHI1A009584 transcription start site (cathepsin B gene model shown in blue). Gene models, exon boundaries, and UTR regions are annotated."),
-
-      h3("3.4.2 Chromosome 9 — Colour Locus"),
-      body("The lead SNP for shell colour, AX-707000465 (chr9:17,792,089), falls within an exon of RPHI1A033704T2, which encodes a transcription factor EC-like protein (LOC132726478). A secondary SNP at chr9:15,994,360 (AX-706000393) is located 71 bp upstream of the same gene family. Transcription factor EC (also known as TFEC) belongs to the MiT/TFE family of helix-loop-helix leucine-zipper transcription factors, which in vertebrates regulate melanogenesis and lysosomal biogenesis. This family includes MITF (microphthalmia-associated transcription factor), the master regulator of melanocyte differentiation."),
-      body("Importantly, the shell colour association signal was stable across all three CIE L*a*b* channels (LAB_L, LAB_A, LAB_B) with near-identical p-values and SNP rankings, suggesting this locus controls overall pigmentation rather than a specific colour channel. This pattern is inconsistent with a simple reflectance or structural colour mechanism and more consistent with regulation of total pigment biosynthesis. The independence of shell colour from heat resistance, confirmed by the absence of a LAB signal on the Perkinsus-associated chr18 locus, confirms that colour and disease resistance are genetically uncorrelated in this population."),
-      ...spacer(1),
-      caption("Table 10. Key functional SNPs on chromosome 9 (colour locus)."),
-      dataTable(
-        ["SNP ID", "Chr", "Position", "SnpEff Effect", "Gene", "Putative Function"],
-        [
-          ["AX-707000465", "9", "17,792,089", "Exon (missense)", "RPHI1A033704T2", "Transcription factor EC-like (TFEC) — pigmentation regulator"],
-          ["AX-706000393", "9", "15,994,360", "Upstream 71 bp", "LOC132726478", "TFEC family — promoter variant"],
-        ],
-        [1400, 500, 1400, 1600, 1526, 2600]
-      ),
-      ...spacer(1),
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 80, after: 40 },
-        children: [new TextRun({ text: "[Figure 5: JBrowse screenshot — AX-707000465 on chr 9 in exon of RPHI1A033704. Insert image here.]",
-          italics: true, size: 20, color: "888888", font: "Arial" })]
-      }),
-      caption("Figure 5. JBrowse view of the chromosome 9 colour locus. The lead SNP AX-707000465 (red marker) falls within exon 3 of RPHI1A033704T2. The transcription factor EC-like gene structure and surrounding synteny are shown."),
-
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // 4. DISCUSSION
-      // ═══════════════════════════════════════════════════════════
-      h1("4. Discussion"),
-      h2("4.1 Genotyping Quality and SNP Dataset"),
-      body("The reprocessing of archived .CEL files using the Axiom Analysis Suite yielded a high-quality SNP dataset with a mean call rate of 98.7%, demonstrating that historical microarray data stored under appropriate cryogenic conditions can be successfully repurposed for genomic analyses. The final set of 16,331 SNPs distributed across the 19 R. philippinarum chromosomes provides adequate density for parentage assignment and genome-wide association mapping at the resolution achievable with this array."),
-      body("The stringent call rate threshold (≥97% per sample) intentionally excluded borderline-quality samples to protect downstream analyses from genotyping noise. While this reduced the initial cohort, the conservative approach is justified given that erroneous genotype calls propagate through all subsequent steps — pedigree reconstruction, GRM estimation and association testing — potentially generating false positives or inflating test statistics."),
-
-      h2("4.2 Pedigree Reconstruction and Choice of Sequoia"),
-      body("The decision to use Sequoia over Colony was driven by both empirical and biological considerations. Colony's tendency to generate large numbers of dummy parents in this dataset resulted in an inflated family count that exceeded the number of breeding events physically possible in the experimental design. Dummy individuals in Colony represent inferred but unsampled parents, and their high frequency typically indicates either insufficient SNP power to resolve sibships unambiguously or violation of Colony's underlying assumptions (e.g., discrete generations, uniform polygamy structure). In polyploid or highly inbred bivalve populations, these conditions are frequently violated."),
-      body("Sequoia's sequential likelihood-ratio approach assigns parentage only when the evidence is unambiguous, resulting in a lower but more credible assignment rate. The 2,568 families reconstructed are consistent with the known number of broodstock (62 individuals) contributing to multiple spawning events and the realistic expectation of 30–50 offspring families per female in controlled aquaculture conditions. The high assignment rate to both parents (71.5%) suggests sufficient SNP power for this cohort size."),
-
-      h2("4.3 GWAS Findings — Disease Resistance"),
-      body("The significant GWAS peak on chromosome 18 for Perkinsus copy number represents one of the first genome-wide significant QTL for disease resistance in R. philippinarum identified using a mixed linear model controlling for relatedness. The use of MLMA-LOCO is particularly appropriate for aquaculture populations with structured pedigrees, as it avoids the overestimation of genetic effects that occurs when the GRM includes the chromosome being tested."),
-      body("The functional annotation of the lead SNP to the promoter region of a cathepsin B-coding gene (RPHI1A009584) is biologically compelling. Cathepsins are key effectors of the lysosomal-phagosomal pathway by which bivalves clear intracellular pathogens including Perkinsus. Promoter variants can alter transcription factor binding site affinity, changing the magnitude and timing of cathepsin expression in response to infection. This mechanism is consistent with published studies in oysters showing that upregulation of lysosomal hydrolases correlates with resistance to Perkinsus-related mortality."),
-      body("A promoter-region SNP that creates a new binding site for a positive transcriptional activator, or abolishes a repressor site, could increase baseline cathepsin expression in haemocytes, improving pathogen clearance. Functional validation through reporter gene assays and allele-specific expression analyses in experimentally infected clams would be required to confirm this hypothesis."),
-
-      h2("4.4 GWAS Findings — Shell Colour"),
-      body("The exceptionally low p-values for the chromosome 9 colour locus (lead SNP p = 4.27×10⁻³³) are indicative of a major-effect QTL — a relatively rare finding for complex traits in marine bivalves. The consistency of the signal across all three CIE L*a*b* channels (representing lightness, red-green chromaticity, and blue-yellow chromaticity respectively) indicates that the locus controls pigment quantity or total pigment biosynthesis, rather than a specific spectral component."),
-      body("The candidate gene RPHI1A033704, encoding a transcription factor EC-like (TFEC) protein, belongs to the MiT/TFE family. In vertebrates, MITF — the most studied family member — is the master regulator of melanocyte differentiation, controlling the transcription of enzymes required for melanin biosynthesis (tyrosinase, DCT/TRP2, TYRP1). If the molluscan orthologue plays an analogous role in haemocyte- or mantle-derived pigment cells, a coding or regulatory variant in this gene could dramatically alter shell pigmentation by affecting the transcription of downstream biosynthetic genes."),
-      body("The LAB stability across shell colour categories (LAB_L, LAB_A, LAB_B all pointing to the same locus) and the absence of any correlation with Perkinsus resistance parameters confirm that shell colour in this population is genetically independent of disease susceptibility. This is practically important for breeding programmes: colour selection would not impose a correlated response on disease resistance."),
-
-      h2("4.5 Morphometric Traits — Polygenic Architecture"),
-      body("The absence of genome-wide significant hits for height, weight, width and length (after Bonferroni correction) is consistent with the expectation that morphometric traits in aquatic invertebrates are highly polygenic, with many loci of small effect distributed across the genome. The suggestive peaks on chromosome 12 (particularly around the RPHI1A012156 locus, appearing in height, weight and width GWAS) and the recurrence of AX-707714595 on chromosome 18 across multiple growth traits suggest the existence of pleiotropic growth regulators, but larger sample sizes would be required to resolve these signals."),
-
-      h2("4.6 Limitations and Future Directions"),
-      body("Several limitations of this study should be acknowledged. First, the use of a fixed array limits the SNP density to the markers included at array design time; whole-genome sequencing would provide an unbiased and denser marker set. Second, phenotypic measurements were collected at a single time point, precluding growth trajectory analyses. Third, the GWAS sample size (n ≈ 2,843) is modest by human GWAS standards, which likely contributes to the suggestive rather than significant findings for polygenic traits."),
-      body("Future work should include: (i) validation of the chromosome 18 cathepsin B promoter variant using allele-specific expression and infection challenge experiments; (ii) fine-mapping of the chromosome 9 colour QTL using targeted resequencing; (iii) development of a genomic prediction model using the identified QTL as fixed effects alongside genome-wide SNPs; and (iv) exploration of epigenetic contributions to disease resistance and colour using ATAC-seq and bisulphite sequencing."),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // 5. CONCLUSIONS
-      // ═══════════════════════════════════════════════════════════
-      h1("5. Conclusions"),
-      body("This thesis has demonstrated the feasibility and scientific value of reprocessing archived microarray data for genomic analyses in R. philippinarum. The key conclusions are:"),
-      ...spacer(1),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "16,331 high-quality SNPs were successfully recovered from archived .CEL files using stringent Axiom Analysis Suite QC, providing a robust foundation for population genomic analyses.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "Sequoia outperformed Colony for pedigree reconstruction in this dataset, yielding 2,568 biologically credible family units with a 71.5% dual-parent assignment rate. Colony's excessive dummy parent generation renders it unsuitable for this experimental design.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "GWAS using MLMA-LOCO identified a genome-wide significant locus on chromosome 18 for Perkinsus olseni resistance, with the lead SNP (AX-707710423) localised to the promoter region of a cathepsin B gene (RPHI1A009584) — a prime candidate for marker-assisted selection of disease-resistant lines.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "An exceptionally strong association for shell colour was detected on chromosome 9 (p = 4.27×10⁻³³), consistent across all CIE L*a*b* channels, with the lead SNP in an exon of a TFEC-family transcription factor gene (RPHI1A033704) that likely regulates molluscan pigmentation.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "Shell colour and Perkinsus resistance are genetically independent traits, confirming that simultaneous selection for colour standardisation and disease resistance is feasible without antagonistic genetic correlations.", size: 22, font: "Arial" })] }),
-      new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { before: 80, after: 80 }, children: [new TextRun({ text: "The identified SNP markers, particularly AX-707710423 and AX-707000465, provide immediate candidates for incorporation into a marker-assisted or genomic selection programme for R. philippinarum aquaculture.", size: 22, font: "Arial" })] }),
-      ...spacer(1),
-      summaryBox([
-        "TRANSLATIONAL IMPACT",
-        "• SNP AX-707710423 (chr 18, cathepsin B promoter) → marker for Perkinsus resistance breeding",
-        "• SNP AX-707000465 (chr 9, TFEC-like exon) → marker for shell colour standardisation",
-        "• 2,568 families from Sequoia → ready for genomic prediction modelling",
-        "• Genetic independence of colour and resistance → simultaneous selection is feasible",
-      ]),
-      pb(),
-
-      // ═══════════════════════════════════════════════════════════
-      // REFERENCES
-      // ═══════════════════════════════════════════════════════════
-      h1("References"),
-      body("1. Guo X, Ford SE, Zhang F (1999). Molluscan aquaculture. Developments in Aquaculture and Fisheries Science 31:77–94."),
-      body("2. Ruano F, Batista FM, Arcangeli G (2015). Perkinsosis in the clams Ruditapes decussatus and R. philippinarum in the Northeastern Atlantic and Mediterranean Sea. Journal of Invertebrate Pathology 131:58–63."),
-      body("3. Striegl AM, Butt D, Raftos DA (2008). Implications of reductions in hemolymph phenoloxidase activity for the Sydney rock oyster, Saccostrea glomerata, following exposure to QX disease. Diseases of Aquatic Organisms 79:167–173."),
-      body("4. Jarne P, Lagoda PJL (1996). Microsatellites, from molecules to populations and back. Trends in Ecology and Evolution 11:424–429."),
-      body("5. Huisman J (2017). Pedigree reconstruction from SNP data: parentage assignment, sibship clustering, and beyond. Molecular Ecology Resources 17:1009–1024. [Sequoia package]"),
-      body("6. Jones OR, Wang J (2010). COLONY: a program for parentage and sibship inference from multilocus genotype data. Molecular Ecology Resources 10:551–555."),
-      body("7. Yang J, Lee SH, Goddard ME, Visscher PM (2011). GCTA: a tool for genome-wide complex trait analysis. American Journal of Human Genetics 88:76–82."),
-      body("8. Yang J, et al. (2014). Advantages and pitfalls in the application of mixed-model association methods. Nature Genetics 46:100–106. [MLMA-LOCO]"),
-      body("9. Cingolani P, et al. (2012). A program for annotating and predicting the effects of single nucleotide polymorphisms, SnpEff. Fly 6:80–92."),
-      body("10. Buels R, et al. (2016). JBrowse: a dynamic web platform for genome visualization and analysis. Genome Biology 17:66."),
-      body("11. Purcell S, et al. (2007). PLINK: a tool set for whole-genome association and population-based linkage analyses. American Journal of Human Genetics 81:559–575."),
-      body("12. Kumar S, Stecher G, Tamura K (2016). MEGA7: Molecular Evolutionary Genetics Analysis version 7.0 for bigger datasets. Molecular Biology and Evolution 33:1870–1874."),
-      body("13. Qi H, et al. (2017). Identification of SNPs related to shell color in the manila clam Ruditapes philippinarum. Genes 8:277."),
-      body("14. Milan M, et al. (2011). Transcriptomics and proteomics of the Ruditapes philippinarum immune response against Perkinsus olseni. Developmental and Comparative Immunology 35:1236–1246."),
-      body("15. Tang B, et al. (2023). Chromosome-level genome assembly of the Manila clam Ruditapes philippinarum. Scientific Data 10:183."),
-    ]
-  }]
-});
-
-Packer.toBuffer(doc).then(buffer => {
-  fs.writeFileSync("/mnt/user-data/outputs/Ruditapes_philippinarum_Thesis.docx", buffer);
-  console.log("Done!");
-});
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saranya Vijayaraghavan - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.8em;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        
+        .bio {
+            color: #888;
+            font-size: 1em;
+            max-width: 700px;
+            margin: 20px auto;
+        }
+        
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .portfolio-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .portfolio-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+        }
+        
+        .portfolio-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .portfolio-card p {
+            color: #666;
+            margin-bottom: 15px;
+            flex-grow: 1;
+        }
+        
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .skill-tag {
+            background: #f0f0f0;
+            color: #667eea;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            border: 1px solid #667eea;
+            font-weight: 500;
+        }
+        
+        .card-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            transition: all 0.3s;
+            align-self: flex-start;
+        }
+        
+        .card-link:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        .section-title {
+            color: white;
+            font-size: 2em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Saranya Vijayaraghavan</h1>
+            <p class="subtitle">Data Analyst | Genomics Researcher | Web Developer</p>
+            <p class="bio">Welcome to my portfolio! Explore my work in data analysis, SQL database design, and bioinformatics research.</p>
+        </header>
+        
+        <h2 class="section-title">Featured Projects</h2>
+        
+        <div class="portfolio-grid">
+            <!-- SQL Portfolio Card -->
+            <a href="sql_portfolio.html" class="portfolio-card">
+                <h2>SQL Portfolio</h2>
+                <p>Interactive showcase of my SQL projects, database design work, and data analysis expertise. Explore complex queries, schema design, and query optimization techniques.</p>
+                <div class="skills">
+                    <span class="skill-tag">SQL</span>
+                    <span class="skill-tag">Database Design</span>
+                    <span class="skill-tag">MySQL</span>
+                    <span class="skill-tag">PostgreSQL</span>
+                    <span class="skill-tag">Data Analysis</span>
+                </div>
+                <span class="card-link">View Projects →</span>
+            </a>
+            
+            <!-- Portfolio Card -->
+            <a href="Saranya_Portfolio.html" class="portfolio-card">
+                <h2>Professional Portfolio</h2>
+                <p>Comprehensive portfolio highlighting my professional experience, skills, and major projects across data science, research, and development.</p>
+                <div class="skills">
+                    <span class="skill-tag">Python</span>
+                    <span class="skill-tag">R</span>
+                    <span class="skill-tag">Data Science</span>
+                    <span class="skill-tag">Genomics</span>
+                </div>
+                <span class="card-link">Learn More →</span>
+            </a>
+            
+            <!-- Thesis Card -->
+            <div class="portfolio-card" style="cursor: default;">
+                <h2>Master's Thesis</h2>
+                <p><strong>Genomic Characterisation of Ruditapes philippinarum</strong> — A comprehensive research document on SNP-based parentage assignment, GWAS, and functional annotation of economically important traits in Manila clams.</p>
+                <div class="skills">
+                    <span class="skill-tag">Genomics</span>
+                    <span class="skill-tag">GWAS</span>
+                    <span class="skill-tag">Bioinformatics</span>
+                    <span class="skill-tag">Research</span>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em; color: #999;">View the thesis source in the repository</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; 2026 Saranya Vijayaraghavan | All Rights Reserved</p>
+            <p>
+                <a href="https://github.com/SaranyaVijayaraghavan" style="color: white; text-decoration: none;">GitHub</a> | 
+                <a href="#" style="color: white; text-decoration: none;">LinkedIn</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
